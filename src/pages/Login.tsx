@@ -17,6 +17,7 @@ export default function Login() {
 
   return (
     <form onSubmit={handleLogin}>
+
       <input
         type="email"
         placeholder="Email"
@@ -30,6 +31,7 @@ export default function Login() {
       />
 
       <button type="submit">Login</button>
+
     </form>
   )
 }
