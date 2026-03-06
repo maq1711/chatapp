@@ -17,7 +17,7 @@ export default function Register() {
 
   return (
     <form onSubmit={handleRegister}>
-
+        
       <input
         type="email"
         placeholder="Email"
