@@ -1,0 +1,96 @@
+/* Light theme (default) */
+:root,
+[data-theme="light"] {
+    --color-primary: rgba(1, 158, 255, 1);
+    --color-bacground-primary: #fcfcfc;
+    --color-bacground-secondary: #F3F7FA;
+    --color-secondary: #722ed1;
+    --color-success: #52c41a;
+    --color-warning: #faad14;
+    --color-theme-red: #bc2e31;
+    --color-text: rgba(14, 14, 14, 1);
+    --color-gray-text: rgba(119, 119, 119, 1);
+    --color-white: #fff;
+    --color-on-active: #fff6f6;
+    --color-placeholder-text: rgba(16, 16, 16, 1);
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+    --color-primary: rgba(70, 180, 255, 1);
+    --color-bacground-primary: #121212;
+    --color-bacground-secondary: #1e1e1e;
+    --color-secondary: #a855f7;
+    --color-success: #4ade80;
+    --color-warning: #facc15;
+    --color-theme-red: #f87171;
+    --color-text: rgba(250, 250, 250, 1);
+    --color-gray-text: rgba(163, 163, 163, 1);
+    --color-white: #1e1e1e;
+    --color-on-active: #2a1a1a;
+    --color-placeholder-text: rgba(212, 212, 212, 1);
+}
+
+/* Fonts */
+@font-face {
+    font-family: "Gilroy";
+    src: url("/Fonts/Gilroy-Regular.woff2") format("truetype");
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: "Gilroy-bold";
+    src: url("/Fonts/Gilroy-Bold.woff") format("truetype");
+    font-weight: 700;
+}
+
+@font-face {
+    font-family: "Gilroy-semibold";
+    src: url("/Fonts/Gilroy-SemiBold.ttf") format("truetype");
+    font-weight: 600;
+}
+
+body {
+    font-family: "Gilroy";
+    overflow-x: hidden !important;
+    background: var(--color-bacground-primary) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    /* scrollbar width */
+    height: 8px;
+    /* horizontal scrollbar height */
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-bacground-primary);
+    /* track (background) */
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-primary);
+    /* draggable part */
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-secondary);
+    /* hover effect */
+}
+
+html {
+    scroll-behavior: smooth;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.theme-devider {
+    width: 100%;
+    height: 1px;
+    border: 1px solid rgba(205, 214, 229, 1);
+}
+
+[data-theme="dark"] .theme-devider {
+    border-color: rgba(63, 63, 70, 1);
+}
