@@ -1,0 +1,132 @@
+.theme-toggle-wrapper {
+  position: fixed;
+  top: 8px;
+  right: 20px;
+  z-index: 9999;
+}
+
+.theme-icon {
+  display: inline-flex;
+  font-size: 16px;
+}
+
+.theme-text {
+  display: inline;
+}
+
+.theme-toggle-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 2px solid var(--color-primary);
+  background: var(--color-bacground-secondary);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transform: translateY(-2px);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(0);
+}
+
+/* Small Mobile Devices (320px - 480px) */
+@media (max-width: 480px) {
+  .theme-toggle-wrapper {
+    top: 6px;
+    right: 10px;
+    z-index: 999;
+  }
+
+  .theme-toggle-btn {
+    padding: 8px;
+    font-size: 12px;
+    gap: 0;
+    min-width: 36px;
+    justify-content: center;
+  }
+
+  .theme-text {
+    display: none;
+  }
+
+  .theme-icon {
+    font-size: 18px;
+  }
+}
+
+/* Medium Mobile Devices (481px - 640px) */
+@media (min-width: 481px) and (max-width: 640px) {
+  .theme-toggle-wrapper {
+    top: 8px;
+    right: 12px;
+    z-index: 999;
+  }
+
+  .theme-toggle-btn {
+    padding: 8px;
+    font-size: 13px;
+    gap: 0;
+    min-width: 38px;
+    justify-content: center;
+  }
+
+  .theme-text {
+    display: none;
+  }
+
+  .theme-icon {
+    font-size: 20px;
+  }
+}
+
+/* Tablets (641px - 1024px) */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .theme-toggle-wrapper {
+    top: 10px;
+    right: 15px;
+    z-index: 999;
+  }
+
+  .theme-toggle-btn {
+    padding: 8px;
+    font-size: 13px;
+    gap: 0;
+    min-width: 40px;
+    justify-content: center;
+  }
+
+  .theme-text {
+    display: none;
+  }
+
+  .theme-icon {
+    font-size: 20px;
+  }
+}
+
+/* Desktop and above (1025px+) */
+@media (min-width: 1025px) {
+  .theme-toggle-wrapper {
+    top: 8px;
+    right: 20px;
+  }
+
+  .theme-toggle-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}

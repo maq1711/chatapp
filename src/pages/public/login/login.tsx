@@ -38,14 +38,12 @@ export default function Login() {
           required
         />
 
-        <button type="submit" disabled={loading} style={{ width: "100%" }}>
+        <button type="submit" disabled={loading} style={{ width: "100%", height: "2.5em" }}>
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
 
-      <p  style={{ marginTop: "15px" }}>
-        Don't have an account? <Link to="/register">Register</Link>
-      </p>
+      <p>Don't have an account? <Link to="/register">Register</Link></p>
     </div>
   );
 }

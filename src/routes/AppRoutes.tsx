@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import Login from "../pages/public/login/login";
-import Chat from "../pages/private/Chat/Chat";
+import ChatLayout from "../layouts/ChatLayout";
 import ProtectedRoute from "./Guards/ProtectedRoute";
 import Register from "../pages/public/register/register";
 
@@ -9,6 +9,8 @@ export default function AppRoutes() {
     <Routes>
       <Route path="/" element={<Login />} />
       <Route path="/register" element={<Register />}/>
+      <Route path="/chat" element={<ChatLayout />}/>
+{/*       
       <Route
         path="/chat"
         element={
@@ -16,7 +18,7 @@ export default function AppRoutes() {
             <Chat />
           </ProtectedRoute>
         }
-      />
+      /> */}
     </Routes>
   );
 }
