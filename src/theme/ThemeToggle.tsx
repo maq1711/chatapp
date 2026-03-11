@@ -13,8 +13,8 @@ export default function ThemeToggle() {
         onClick={() => dispatch(toggleTheme())}
         aria-label={`Switch to ${mode === "light" ? "dark" : "light"} theme`}
       >
-        <span className="theme-icon">{mode === "light" ? "🌙" : "☀️"}</span>
-        <span className="theme-text">{mode === "light" ? "Dark Mode" : "Light Mode"}</span>
+        <span className={`theme-icon ${mode === "light" ? "moon-icon" : ""}`}>{mode === "light" ? "🌙" : "☀️"}</span>
+        {/* <span className="theme-text">{mode === "light" ? "" : "Light Mode"}</span> */}
       </button>
     </div>
   );

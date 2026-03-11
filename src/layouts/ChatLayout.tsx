@@ -13,13 +13,34 @@ interface User {
   time: string;
 }
 
+interface Group {
+  id: number;
+  name: string;
+  description?: string;
+  lastMessage: string;
+  time: string;
+  members: User[];
+  createdAt: Date;
+}
+
 export default function ChatLayout() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
 
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
+    setSelectedGroup(null); // Clear group selection
     // Close sidebar on mobile after selecting a user
+    if (window.innerWidth <= 768) {
+      setSidebarVisible(false);
+    }
+  };
+
+  const handleSelectGroup = (group: Group) => {
+    setSelectedGroup(group);
+    setSelectedUser(null); // Clear user selection
+    // Close sidebar on mobile after selecting a group
     if (window.innerWidth <= 768) {
       setSidebarVisible(false);
     }
@@ -55,7 +76,12 @@ export default function ChatLayout() {
         breakpoint="md"
         collapsedWidth="0"
       >
-        <ChatSidebar onSelectUser={handleSelectUser} selectedUserId={selectedUser?.id} />
+        <ChatSidebar 
+          onSelectUser={handleSelectUser} 
+          onSelectGroup={handleSelectGroup}
+          selectedUserId={selectedUser?.id} 
+          selectedGroupId={selectedGroup?.id}
+        />
       </Sider>
 
       <Content
@@ -65,7 +91,11 @@ export default function ChatLayout() {
         }}
         className="chat-content"
       >
-        <Chat selectedUser={selectedUser} />
+        <Chat 
+          selectedUser={selectedUser} 
+          selectedGroup={selectedGroup}
+          chatType={selectedGroup ? 'group' : selectedUser ? 'user' : 'user'}
+        />
       </Content>
     </Layout>
   );

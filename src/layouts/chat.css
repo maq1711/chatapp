@@ -25,9 +25,9 @@
 /* Hamburger Menu Button */
 .hamburger-menu {
   position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 1002;
+  /* top: 6px;
+  right: 15px; */
+  z-index: 9999;
   background: transparent !important;
   color: var(--color-text) !important;
   border: none !important;
@@ -40,6 +40,8 @@
   justify-content: center;
   transition: all 0.3s ease;
   padding: 0;
+  left: 5px;
+    top: 4px;
 }
 
 .hamburger-menu:hover {
@@ -55,6 +57,34 @@
 
 .hamburger-menu:hover span {
   color: #fff !important;
+}
+
+/* Force hamburger and close icons to black in light mode */
+:root .hamburger-menu svg,
+[data-theme="light"] .hamburger-menu svg {
+  color: #000 !important;
+  fill: #000 !important;
+  stroke: #000 !important;
+}
+
+:root .hamburger-menu:hover svg,
+[data-theme="light"] .hamburger-menu:hover svg {
+  color: #333 !important;
+  fill: #333 !important;
+  stroke: #333 !important;
+}
+
+/* Force hamburger and close icons to white in dark mode */
+[data-theme="dark"] .hamburger-menu svg {
+  color: #fff !important;
+  fill: #fff !important;
+  stroke: #fff !important;
+}
+
+[data-theme="dark"] .hamburger-menu:hover svg {
+  color: #e0e0e0 !important;
+  fill: #e0e0e0 !important;
+  stroke: #e0e0e0 !important;
 }
 
 /* Sidebar overlay for mobile */
@@ -121,10 +151,10 @@
     max-width: 280px !important;
   }
 
-  .hamburger-menu {
+  /* .hamburger-menu {
     width: 36px;
     height: 36px;
-    top: 10px;
-    left: 10px;
-  }
+    top: 6px;
+    left: 15px;
+  } */
 }

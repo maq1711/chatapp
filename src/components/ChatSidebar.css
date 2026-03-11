@@ -115,7 +115,8 @@
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
   .sidebar-header {
-    padding: 12px 15px;
+    /* padding: 12px 15px; */
+    padding: 15px 40px;
     font-size: 17px;
   }
 
@@ -138,7 +139,7 @@
 
 @media (max-width: 480px) {
   .sidebar-header {
-    padding: 10px 12px;
+    padding: 15px 40px;
     font-size: 16px;
   }
 
@@ -157,4 +158,81 @@
   .list-item-time {
     font-size: 10px;
   }
+}
+
+span.ant-layout-sider-zero-width-trigger.ant-layout-sider-zero-width-trigger-left {
+  display: none;
+}
+
+/* Tabs Styling */
+.sidebar-tabs {
+  background: var(--color-bacground-secondary) !important;
+}
+
+.sidebar-tabs .ant-tabs-tab {
+  color: var(--color-text) !important;
+  font-weight: 500;
+  border-color: var(--color-primary) !important;
+  transition: all 0.3s ease;
+  flex: 1;
+}
+
+.sidebar-tabs .ant-tabs-tab-active {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.sidebar-tabs .ant-tabs-ink-bar {
+  background: var(--color-primary) !important;
+}
+
+.sidebar-tabs .ant-tabs-tab:hover {
+  color: #ffffff !important;
+}
+
+.sidebar-tabs .ant-tabs-content {
+  background: var(--color-bacground-secondary) !important;
+  color: var(--color-text) !important;
+}
+
+/* Tab label text color */
+.sidebar-tabs .ant-tabs-tab span {
+  color: inherit !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* Badge in tabs */
+.sidebar-tabs .ant-badge {
+  color: #ffffff !important;
+}
+
+.sidebar-tabs .ant-badge-count {
+  background: var(--color-primary) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+/* Dark mode specific tab styling */
+[data-theme="dark"] .sidebar-tabs .ant-tabs-tab {
+  color: rgba(250, 250, 250, 0.85) !important;
+}
+
+[data-theme="dark"] .sidebar-tabs .ant-tabs-tab-active {
+  color: #ffffff !important;
+  background: rgba(70, 180, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .sidebar-tabs .ant-tabs-tab:hover {
+  color: #ffffff !important;
+  background: rgba(70, 180, 255, 0.05) !important;
+} 
+
+.ant-tabs-nav-wrap{
+  margin: 0px 25px;
+}
+.ant-tabs-nav-wrap:active{
+  border: none;
 }

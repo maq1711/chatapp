@@ -10,33 +10,40 @@
   font-size: 16px;
 }
 
+.moon-icon {
+  color: #000;
+  filter: brightness(0) saturate(0);
+  text-shadow: 0 0 0 #000;
+}
+
+/* Light mode - moon icon black */
+:root .moon-icon,
+[data-theme="light"] .moon-icon {
+  color: #000 !important;
+  filter: brightness(0) saturate(0) !important;
+}
+
+/* Dark mode - moon icon white (default color) */
+[data-theme="dark"] .moon-icon {
+  color: inherit !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
 .theme-text {
   display: inline;
 }
 
 .theme-toggle-btn {
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 2px solid var(--color-primary);
-  background: var(--color-bacground-secondary);
-  color: var(--color-text);
+  background: none;
+  border: none;
+  padding: 0;
   cursor: pointer;
-  font-family: inherit;
-  font-weight: 500;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  color: inherit;
 }
 
 .theme-toggle-btn:hover {
-  background: var(--color-primary);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  transform: translateY(-2px);
+  opacity: 0.8;
 }
 
 .theme-toggle-btn:active {
@@ -96,7 +103,7 @@
 /* Tablets (641px - 1024px) */
 @media (min-width: 641px) and (max-width: 1024px) {
   .theme-toggle-wrapper {
-    top: 10px;
+    /* top: 10px; */
     right: 15px;
     z-index: 999;
   }
