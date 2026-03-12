@@ -43,7 +43,8 @@ export default function Login() {
         </button>
       </form>
 
-      <p>Don't have an account? <Link to="/register">Register</Link></p>
+      <p style={{ margin: "10px 0" }}>
+        Don't have an account? <Link to="/register">Register</Link></p>
     </div>
   );
 }

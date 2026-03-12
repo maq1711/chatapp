@@ -17,7 +17,7 @@ export default function Login() {
       style={{ width: "300px", margin: "100px auto" }}
       className="login-container"
     >
-      <h2>Login</h2>
+      <h2>Register</h2>
 
       <form onSubmit={handleLogin}>
         <input
@@ -38,13 +38,13 @@ export default function Login() {
           required
         />
 
-        <button type="submit" disabled={loading} style={{ width: "100%" }}>
-          {loading ? "Logging in..." : "Login"}
+        <button type="submit" disabled={loading} style={{ width: "100%", height: "2.5em" }}>
+          {loading ? "Registering..." : "Register"}
         </button>
       </form>
 
-      <p  style={{ marginTop: "15px" }}>
-        Don't have an account? <Link to="/">Login</Link>
+      <p  style={{ margin: "10px 0" }}>
+        Already have an account? <Link to="/">Login</Link>
       </p>
     </div>
   );

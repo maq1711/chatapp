@@ -1,14 +1,6 @@
 export { baseApiController } from "./baseApiController";
 export { baseApi } from "./baseApi";
-export {
-  authApi,
-  useGetMeQuery,
-  useLazyGetMeQuery,
-  useLoginMutation,
-  useRegisterMutation,
-  useLogoutMutation,
-  useUpdateUserMutation,
-  useDeleteAccountMutation,
+export { authApi, useGetMeQuery,useLazyGetMeQuery, useLoginMutation, useRegisterMutation, useLogoutMutation, useUpdateUserMutation, useDeleteAccountMutation,
   type User,
   type LoginRequest,
   type RegisterRequest,
@@ -24,8 +16,4 @@ export {
   type AppDispatch,
 } from "./store";
 
-export {
-  setTheme,
-  toggleTheme,
-  type ThemeMode,
-} from "./themeSlice";
+export { setTheme, toggleTheme, type ThemeMode } from "./themeSlice";

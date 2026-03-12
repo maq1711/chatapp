@@ -186,9 +186,9 @@ span.ant-layout-sider-zero-width-trigger.ant-layout-sider-zero-width-trigger-lef
   background: var(--color-primary) !important;
 }
 
-.sidebar-tabs .ant-tabs-tab:hover {
+/* .sidebar-tabs .ant-tabs-tab:hover {
   color: #ffffff !important;
-}
+} */
 
 .sidebar-tabs .ant-tabs-content {
   background: var(--color-bacground-secondary) !important;
