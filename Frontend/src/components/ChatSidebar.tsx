@@ -8,6 +8,7 @@ import "./ChatSidebar.css";
 interface User {
   id: number;
   name: string;
+  connectionId: string;
   lastMessage: string;
   time: string;
 }
@@ -22,20 +23,15 @@ interface Group {
   createdAt: Date;
 }
 
-const users: User[] = [
-  { id: 1, name: "Ali", lastMessage: "Hello bro", time: "10:30" },
-  { id: 2, name: "Ahmed", lastMessage: "Meeting at 5", time: "09:20" },
-  { id: 3, name: "Sara", lastMessage: "Okay 👍", time: "Yesterday" },
-];
-
 interface ChatSidebarProps {
   onSelectUser: (user: User) => void;
   onSelectGroup?: (group: Group) => void;
   selectedUserId?: number;
   selectedGroupId?: number;
+  onlineUsers: User[];
 }
 
-export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserId, selectedGroupId }: ChatSidebarProps) {
+export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserId, selectedGroupId, onlineUsers }: ChatSidebarProps) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("chats");
@@ -44,23 +40,22 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
     {
       id: 101,
       name: "Project Team",
-      // description: "Team collaborationsss",
       lastMessage: "Let's meet tomorrow",
       time: "11:45",
-      members: [users[0], users[1]],
+      members: [],
       createdAt: new Date(),
     },
   ]);
 
   // Filter users based on search query (minimum 2 characters)
   const filteredUsers = searchQuery.length >= 2
-    ? users.filter((user) => {
+    ? onlineUsers.filter((user) => {
         const query = searchQuery.toLowerCase();
         const nameMatch = user.name.toLowerCase().includes(query);
         const messageMatch = user.lastMessage.toLowerCase().includes(query);
         return nameMatch || messageMatch;
       })
-    : users;
+    : onlineUsers;
 
   // Filter groups based on search query
   const filteredGroups = searchQuery.length >= 2
@@ -124,7 +119,7 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <MessageOutlined />
                 Chats
-                <Badge count={users.length} showZero style={{ backgroundColor: 'var(--color-primary)' }} />
+                <Badge count={onlineUsers.length} showZero style={{ backgroundColor: 'var(--color-primary)' }} />
               </span>
             ),
             children: (
@@ -168,7 +163,7 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
               <div>
                 <div style={{ padding: '12px' }}>
                   <GroupManagement 
-                    availableUsers={users} 
+                    availableUsers={onlineUsers} 
                     onCreateGroup={handleCreateGroup}
                   />
                 </div>

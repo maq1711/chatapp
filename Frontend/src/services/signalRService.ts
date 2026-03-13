@@ -1,175 +1,156 @@
 import * as signalR from "@microsoft/signalr"
 
-// Create the SignalR connection
-const connection = new signalR.HubConnectionBuilder()
-  .withUrl("http://localhost:5000/hubs/chat", {
-    skipNegotiation: false,
-    transport: signalR.HttpTransportType.WebSockets,
-  })
-  .withAutomaticReconnect([0, 0, 1000, 3000, 5000, 10000])
-  .withHubProtocol(new signalR.JsonHubProtocol())
-  .build()
+// Connected user model (matches backend ConnectedUser)
+export interface ConnectedUser {
+  id: number
+  name: string
+  connectionId: string
+}
 
-// Connection state management
+// Callback types
+type UserListCallback = (users: ConnectedUser[]) => void
+type PrivateMessageCallback = (senderName: string, message: string, senderConnectionId: string, senderId: number) => void
+type GroupMessageCallback = (senderName: string, message: string, senderConnectionId: string) => void
+
+// Callback registries — these persist across connection rebuilds (StrictMode safe)
+const callbacks = {
+  userList: new Set<UserListCallback>(),
+  privateMessage: new Set<PrivateMessageCallback>(),
+  groupMessage: new Set<GroupMessageCallback>(),
+}
+
+let connection: signalR.HubConnection | null = null
 let isConnected = false
+let attemptId = 0 // Prevents zombie retries from StrictMode race conditions
 
-// Start connection
-export const startConnection = async () => {
-  try {
-    if (connection.state === signalR.HubConnectionState.Disconnected) {
-      await connection.start()
-      isConnected = true
-      console.log("✅ Connected to SignalR hub")
-    }
-  } catch (err) {
-    console.error("❌ SignalR connection error:", err)
+// Build and start connection, passing userId & name via query string
+export const startConnection = async (userId: string, userName: string) => {
+  const myAttempt = ++attemptId
+
+  // Stop any existing connection first (prevents duplicates from StrictMode)
+  if (connection && connection.state !== signalR.HubConnectionState.Disconnected) {
+    try { await connection.stop() } catch {}
+  }
+
+  // If another call to startConnection happened while we were stopping, bail out
+  if (myAttempt !== attemptId) return
+
+  connection = new signalR.HubConnectionBuilder()
+    .withUrl(`http://localhost:5000/hubs/chat?userId=${encodeURIComponent(userId)}&name=${encodeURIComponent(userName)}`, {
+      skipNegotiation: false,
+      transport: signalR.HttpTransportType.WebSockets,
+    })
+    .withAutomaticReconnect([0, 0, 1000, 3000, 5000, 10000])
+    .withHubProtocol(new signalR.JsonHubProtocol())
+    .build()
+
+  // Register ALL event forwarders on the new connection BEFORE .start()
+  // so we never miss events from OnConnectedAsync
+  connection.on("UserList", (users: ConnectedUser[]) => {
+    callbacks.userList.forEach(cb => cb(users))
+  })
+
+  connection.on("ReceivePrivateMessage", (senderName: string, message: string, senderConnectionId: string, senderId: number) => {
+    callbacks.privateMessage.forEach(cb => cb(senderName, message, senderConnectionId, senderId))
+  })
+
+  connection.on("ReceiveGroupMessage", (senderName: string, message: string, senderConnectionId: string) => {
+    callbacks.groupMessage.forEach(cb => cb(senderName, message, senderConnectionId))
+  })
+
+  connection.onreconnecting(() => {
+    console.log("Reconnecting to SignalR hub...")
     isConnected = false
-    setTimeout(() => startConnection(), 5000) // Retry after 5 seconds
+  })
+
+  connection.onreconnected(() => {
+    console.log("Reconnected to SignalR hub")
+    isConnected = true
+  })
+
+  connection.onclose(() => {
+    console.log("Connection closed")
+    isConnected = false
+  })
+
+  try {
+    await connection.start()
+    // If superseded by a newer attempt, stop this connection and bail
+    if (myAttempt !== attemptId) {
+      try { await connection.stop() } catch {}
+      return
+    }
+    isConnected = true
+    console.log("Connected to SignalR hub")
+  } catch (err) {
+    // Only retry if this is still the latest attempt
+    if (myAttempt !== attemptId) return
+    console.error("SignalR connection error:", err)
+    isConnected = false
+    setTimeout(() => startConnection(userId, userName), 5000)
   }
 }
 
 // Stop connection
 export const stopConnection = async () => {
+  attemptId++ // Invalidate any pending retry from a previous startConnection
   try {
-    await connection.stop()
+    if (connection) {
+      await connection.stop()
+    }
     isConnected = false
-    console.log("🔴 Disconnected from SignalR hub")
   } catch (err) {
-    console.error("❌ Error disconnecting:", err)
+    console.error("Error disconnecting:", err)
   }
 }
 
 // Get connection status
-export const isConnectionActive = () => isConnected && connection.state === signalR.HubConnectionState.Connected
+export const isConnectionActive = () =>
+  isConnected && connection !== null && connection.state === signalR.HubConnectionState.Connected
 
 // ===== SEND MESSAGE METHODS =====
 
-// Send private message to specific user
-export const sendPrivateMessage = async (receiverId: string, message: string, senderName: string) => {
+// Send private message using receiver's connectionId
+export const sendPrivateMessage = async (message: string, receiverConnectionId: string) => {
   try {
-    if (!isConnectionActive()) {
-      console.error("❌ Not connected to hub")
+    if (!isConnectionActive() || !connection) {
+      console.error("Not connected to hub")
       return
     }
-    await connection.invoke("SendPrivateMessage", receiverId, message, senderName)
-    console.log(`📤 Private message sent to ${receiverId}: ${message}`)
+    await connection.invoke("SendPrivateMessage", message, receiverConnectionId)
   } catch (err) {
-    console.error("❌ Error sending private message:", err)
+    console.error("Error sending private message:", err)
   }
 }
 
-// Send message to group
-export const sendGroupMessage = async (groupName: string, message: string, senderName: string) => {
+// Send group message to all others
+export const sendGroupMessage = async (message: string) => {
   try {
-    if (!isConnectionActive()) {
-      console.error("❌ Not connected to hub")
+    if (!isConnectionActive() || !connection) {
+      console.error("Not connected to hub")
       return
     }
-    await connection.invoke("SendGroupMessage", groupName, message, senderName)
-    console.log(`📤 Group message sent to ${groupName}: ${message}`)
+    await connection.invoke("SendGroupMessage", message)
   } catch (err) {
-    console.error("❌ Error sending group message:", err)
+    console.error("Error sending group message:", err)
   }
 }
 
-// Join a group
-export const joinGroup = async (groupName: string, userName: string) => {
-  try {
-    if (!isConnectionActive()) {
-      console.error("❌ Not connected to hub")
-      return
-    }
-    await connection.invoke("JoinGroup", groupName, userName)
-    console.log(`👤 Joined group: ${groupName}`)
-  } catch (err) {
-    console.error("❌ Error joining group:", err)
-  }
+// ===== SUBSCRIBE / UNSUBSCRIBE =====
+// Components call these to register callbacks. Returns an unsubscribe function.
+// Callbacks survive connection rebuilds — the forwarders above dispatch to them.
+
+export const onUserList = (cb: UserListCallback) => {
+  callbacks.userList.add(cb)
+  return () => { callbacks.userList.delete(cb) }
 }
 
-// Leave a group
-export const leaveGroup = async (groupName: string, userName: string) => {
-  try {
-    if (!isConnectionActive()) {
-      console.error("❌ Not connected to hub")
-      return
-    }
-    await connection.invoke("LeaveGroup", groupName, userName)
-    console.log(`👤 Left group: ${groupName}`)
-  } catch (err) {
-    console.error("❌ Error leaving group:", err)
-  }
+export const onReceivePrivateMessage = (cb: PrivateMessageCallback) => {
+  callbacks.privateMessage.add(cb)
+  return () => { callbacks.privateMessage.delete(cb) }
 }
 
-// Join website lobby
-export const joinWebsite = async (userId: string, userName: string) => {
-  try {
-    if (!isConnectionActive()) {
-      console.error("❌ Not connected to hub")
-      return
-    }
-    await connection.invoke("JoinWebsite", userId, userName)
-    console.log(`👤 Joined website`)
-  } catch (err) {
-    console.error("❌ Error joining website:", err)
-  }
+export const onReceiveGroupMessage = (cb: GroupMessageCallback) => {
+  callbacks.groupMessage.add(cb)
+  return () => { callbacks.groupMessage.delete(cb) }
 }
-
-// ===== RECEIVE MESSAGE METHODS =====
-
-// Listen for private messages
-export const onReceivePrivateMessage = (callback: (senderName: string, message: string) => void) => {
-  connection.on("ReceivePrivateMessage", (senderName: string, message: string) => {
-    console.log(`📥 Private message from ${senderName}: ${message}`)
-    callback(senderName, message)
-  })
-}
-
-// Listen for group messages
-export const onReceiveGroupMessage = (callback: (senderName: string, message: string) => void) => {
-  connection.on("ReceiveGroupMessage", (senderName: string, message: string) => {
-    console.log(`📥 Group message from ${senderName}: ${message}`)
-    callback(senderName, message)
-  })
-}
-
-// Listen for user joined notification
-export const onUserJoined = (callback: (userName: string) => void) => {
-  connection.on("UserJoined", (userName: string) => {
-    console.log(`✅ User joined: ${userName}`)
-    callback(userName)
-  })
-}
-
-// Listen for user joined group notification
-export const onUserJoinedGroup = (callback: (userName: string, groupName: string) => void) => {
-  connection.on("UserJoinedGroup", (userName: string, groupName: string) => {
-    console.log(`✅ ${userName} joined group: ${groupName}`)
-    callback(userName, groupName)
-  })
-}
-
-// Listen for user left group notification
-export const onUserLeftGroup = (callback: (userName: string, groupName: string) => void) => {
-  connection.on("UserLeftGroup", (userName: string, groupName: string) => {
-    console.log(`❌ ${userName} left group: ${groupName}`)
-    callback(userName, groupName)
-  })
-}
-
-// Connection state change handlers
-connection.onreconnecting(() => {
-  console.log("🔄 Reconnecting to SignalR hub...")
-  isConnected = false
-})
-
-connection.onreconnected(() => {
-  console.log("✅ Reconnected to SignalR hub")
-  isConnected = true
-})
-
-connection.onclose(() => {
-  console.log("🔴 Connection closed")
-  isConnected = false
-})
-
-export default connection

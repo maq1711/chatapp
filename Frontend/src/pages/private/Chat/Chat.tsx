@@ -2,6 +2,13 @@ import { Input, Button, Dropdown, Badge, Tooltip, Avatar, Tag } from "antd";
 import { SendOutlined, MoreOutlined, EditOutlined, DeleteOutlined, UsergroupAddOutlined } from "@ant-design/icons";
 import { useState, useRef, useEffect } from "react";
 import type { MenuProps } from "antd";
+import {
+  sendPrivateMessage,
+  sendGroupMessage,
+  onReceivePrivateMessage,
+  onReceiveGroupMessage,
+  isConnectionActive,
+} from "../../../services/signalRService";
 import "./Chat.css";
 
 interface Message {
@@ -15,6 +22,7 @@ interface Message {
 interface User {
   id: number;
   name: string;
+  connectionId: string;
   lastMessage: string;
   time: string;
 }
@@ -41,29 +49,8 @@ const getCurrentTime = () => {
   return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
-// Mock chat history for each user and group
-const chatHistory: Record<number, Message[]> = {
-  1: [ // Ali
-    { id: 1, text: "Hello bro", sender: "other", time: "10:25" },
-    { id: 2, text: "Hi Ali! How are you?", sender: "me", time: "10:26" },
-    { id: 3, text: "I'm good, thanks!", sender: "other", time: "10:27" },
-  ],
-  2: [ // Ahmed
-    { id: 1, text: "Meeting at 5", sender: "other", time: "09:15" },
-    { id: 2, text: "Sure, I'll be there", sender: "me", time: "09:16" },
-    { id: 3, text: "Great! See you then", sender: "other", time: "09:20" },
-  ],
-  3: [ // Sara
-    { id: 1, text: "Can you help me with the project?", sender: "other", time: "Yesterday" },
-    { id: 2, text: "Of course! What do you need?", sender: "me", time: "Yesterday" },
-    { id: 3, text: "Okay 👍", sender: "other", time: "Yesterday" },
-  ],
-  // 101: [ // Project Team Group
-  //   { id: 1, text: "Hey everyone!", sender: "other", time: "11:30", senderName: "Ali" },
-  //   { id: 2, text: "Hello team!", sender: "me", time: "11:31" },
-  //   { id: 3, text: "Let's meet tomorrow", sender: "other", time: "11:45", senderName: "Ahmed" },
-  // ],
-};
+// Chat history stored per user/group id
+const chatHistory: Record<number, Message[]> = {};
 
 export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }: ChatProps) {
 
@@ -73,6 +60,11 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
   const [editText, setEditText] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Get current logged-in user info
+  const storedUser = localStorage.getItem("user");
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+  const myName = currentUser?.fullName || "Me";
 
   // Determine current chat ID and name
   const currentChatId = chatType === 'group' ? selectedGroup?.id : selectedUser?.id;
@@ -86,7 +78,46 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
     }
   }, [currentChatId]);
 
-  const sendMessage = () => {
+  // Listen for incoming SignalR messages via callback registry (StrictMode safe)
+  useEffect(() => {
+    const unsubPrivate = onReceivePrivateMessage((senderName, text, senderConnectionId, senderId) => {
+      const incoming: Message = {
+        id: Date.now(),
+        text,
+        sender: "other",
+        time: getCurrentTime(),
+        senderName,
+      };
+      setMessages(prev => {
+        const updated = [...prev, incoming];
+        if (currentChatId) chatHistory[currentChatId] = updated;
+        return updated;
+      });
+    });
+
+    const unsubGroup = onReceiveGroupMessage((senderName, text, senderConnectionId) => {
+      if (senderName === myName) return;
+      const incoming: Message = {
+        id: Date.now(),
+        text,
+        sender: "other",
+        time: getCurrentTime(),
+        senderName,
+      };
+      setMessages(prev => {
+        const updated = [...prev, incoming];
+        if (currentChatId) chatHistory[currentChatId] = updated;
+        return updated;
+      });
+    });
+
+    return () => {
+      unsubPrivate();
+      unsubGroup();
+    };
+  }, [currentChatId, myName]);
+
+  const sendMessage = async () => {
     if (!message.trim() || !currentChatId) return;
 
     const newMessage: Message = { 
@@ -99,6 +130,16 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
     
     setMessages(updatedMessages);
     chatHistory[currentChatId] = updatedMessages;
+
+    // Send via SignalR if connected
+    if (isConnectionActive()) {
+      if (isGroupChat && selectedGroup) {
+        await sendGroupMessage(message);
+      } else if (selectedUser) {
+        await sendPrivateMessage(message, selectedUser.connectionId);
+      }
+    }
+
     setMessage("");
   };
 

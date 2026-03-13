@@ -6,6 +6,7 @@ import "./GroupManagement.css";
 interface User {
   id: number;
   name: string;
+  connectionId: string;
   lastMessage: string;
   time: string;
 }

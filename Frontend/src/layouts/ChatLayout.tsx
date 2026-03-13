@@ -1,14 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout, Button } from "antd";
 import { MenuOutlined, CloseOutlined } from "@ant-design/icons";
 import ChatSidebar from "../components/ChatSidebar";
 import Chat from "../pages/private/Chat/Chat";
+import {
+  startConnection,
+  stopConnection,
+  onUserList,
+  type ConnectedUser,
+} from "../services/signalRService";
 import "./chat.css";
 const { Sider, Content } = Layout;
 
 interface User {
   id: number;
   name: string;
+  connectionId: string;
   lastMessage: string;
   time: string;
 }
@@ -27,6 +34,48 @@ export default function ChatLayout() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
+
+  // Connect to SignalR when chat page loads
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) return;
+    const user = JSON.parse(storedUser);
+
+    // Register UserList callback BEFORE starting connection
+    // so we catch the initial broadcast from OnConnectedAsync
+    const unsubUserList = onUserList((users: ConnectedUser[]) => {
+      const me = user.id;
+      const others: User[] = users
+        .filter((u) => u.id !== me)
+        .map((u) => ({
+          id: u.id,
+          name: u.name,
+          connectionId: u.connectionId,
+          lastMessage: "Online",
+          time: "",
+        }));
+      setOnlineUsers(others);
+
+      // Keep selectedUser's connectionId in sync with latest UserList
+      setSelectedUser(prev => {
+        if (!prev) return prev;
+        const updated = others.find(u => u.id === prev.id);
+        if (updated && updated.connectionId !== prev.connectionId) {
+          return { ...prev, connectionId: updated.connectionId };
+        }
+        return prev;
+      });
+    });
+
+    // Now start the connection — listeners are already in place
+    startConnection(String(user.id), user.fullName);
+
+    return () => {
+      unsubUserList();
+      stopConnection();
+    };
+  }, []);
 
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
@@ -81,6 +130,7 @@ export default function ChatLayout() {
           onSelectGroup={handleSelectGroup}
           selectedUserId={selectedUser?.id} 
           selectedGroupId={selectedGroup?.id}
+          onlineUsers={onlineUsers}
         />
       </Sider>
 
