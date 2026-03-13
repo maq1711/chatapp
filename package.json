@@ -1,42 +1,24 @@
 {
   "name": "chatapp",
+  "version": "1.0.0",
+  "description": "Real-time chat application with React frontend and .NET backend",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "cd Frontend && npm run dev",
+    "build": "cd Frontend && npm run build",
+    "preview": "cd Frontend && npm run preview",
+    "lint": "cd Frontend && npm run lint",
+    "backend:setup": "cd Backend/ChatBackend && dotnet restore",
+    "backend:run": "cd Backend/ChatBackend && dotnet run",
+    "backend:build": "cd Backend/ChatBackend && dotnet build"
   },
-  "dependencies": {
-    "@microsoft/signalr": "^10.0.0",
-    "@reduxjs/toolkit": "^2.11.2",
-    "antd": "^6.3.2",
-    "axios": "^1.13.6",
-    "bootstrap": "^5.3.8",
-    "react": "^19.2.0",
-    "react-bootstrap": "^2.10.10",
-    "react-dom": "^19.2.0",
-    "react-redux": "^9.2.0",
-    "react-router-dom": "^7.13.1",
-    "socket.io-client": "^4.8.3"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.56.1",
-    "@typescript-eslint/parser": "^8.56.1",
-    "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "typescript": "^5.9.3",
-    "vite": "^8.0.0-beta.13"
-  },
-  "overrides": {
-    "vite": "^8.0.0-beta.13"
-  }
+  "keywords": [
+    "chat",
+    "realtime",
+    "react",
+    "dotnet",
+    "signalr"
+  ],
+  "author": "",
+  "license": "MIT"
 }
