@@ -1,15 +1,35 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useLoginMutation } from "../../../redux";
 import "./login.css";
 
 export default function Login() {
   const navigate = useNavigate();
+  const [login, { isLoading }] = useLoginMutation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState();
-  const handleLogin = (data: any) => {
-    console.log(data);
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      const result = await login({ email, password }).unwrap();
+      // Save token and user info to localStorage
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("user", JSON.stringify({
+        id: result.id,
+        fullName: result.fullName,
+        email: result.email,
+        profilePicture: result.profilePicture,
+        bio: result.bio,
+      }));
+      navigate("/chat");
+    } catch (err: any) {
+      setError(err?.data?.message || "Login failed. Please check your credentials.");
+    }
   };
 
   return (
@@ -18,6 +38,8 @@ export default function Login() {
       className="login-container"
     >
       <h2>Login</h2>
+
+      {error && <p style={{ color: "red", fontSize: "14px", marginBottom: "10px" }}>{error}</p>}
 
       <form onSubmit={handleLogin}>
         <input
@@ -38,8 +60,8 @@ export default function Login() {
           required
         />
 
-        <button type="submit" disabled={loading} style={{ width: "100%", height: "2.5em" }}>
-          {loading ? "Logging in..." : "Login"}
+        <button type="submit" disabled={isLoading} style={{ width: "100%", height: "2.5em" }}>
+          {isLoading ? "Logging in..." : "Login"}
         </button>
       </form>
 

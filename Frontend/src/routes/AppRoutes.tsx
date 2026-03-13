@@ -9,16 +9,14 @@ export default function AppRoutes() {
     <Routes>
       <Route path="/" element={<Login />} />
       <Route path="/register" element={<Register />}/>
-      <Route path="/chat" element={<ChatLayout />}/>
-{/*       
       <Route
         path="/chat"
         element={
           <ProtectedRoute>
-            <Chat />
+            <ChatLayout />
           </ProtectedRoute>
         }
-      /> */}
+      />
     </Routes>
   );
 }

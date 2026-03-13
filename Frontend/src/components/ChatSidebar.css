@@ -236,3 +236,84 @@ span.ant-layout-sider-zero-width-trigger.ant-layout-sider-zero-width-trigger-lef
 .ant-tabs-nav-wrap:active{
   border: none;
 }
+
+/* User Info Panel at Bottom */
+.sidebar-user-panel {
+  margin-top: auto;
+  border-top: 1px solid var(--color-primary);
+  background: var(--color-bacground-secondary);
+  position: relative;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.user-info:hover {
+  background: var(--color-bacground-primary);
+}
+
+.user-info-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-email {
+  font-size: 11px;
+  color: var(--color-gray-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-arrow {
+  font-size: 10px;
+  color: var(--color-gray-text);
+  transition: transform 0.3s ease;
+}
+
+.user-menu-arrow.open {
+  transform: rotate(180deg);
+}
+
+.user-menu-dropdown {
+  padding: 6px;
+  border-bottom: 1px solid var(--color-primary);
+  background: var(--color-bacground-secondary);
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #ff4d4f;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 77, 79, 0.1);
+}

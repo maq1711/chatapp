@@ -7,6 +7,10 @@ export const baseApi = createApi({
     baseUrl: baseApiController.baseUrl,
     prepareHeaders: (headers) => {
       headers.set("Content-Type", "application/json");
+      const token = localStorage.getItem("token");
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
       return headers;
     },
   }),

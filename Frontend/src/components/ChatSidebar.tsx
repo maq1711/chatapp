@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { List, Avatar, Input, Tabs, Badge } from "antd";
-import { MessageOutlined, UsergroupAddOutlined } from "@ant-design/icons";
+import { MessageOutlined, UsergroupAddOutlined, LogoutOutlined, UserOutlined, UpOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import GroupManagement from "./GroupManagement";
 import "./ChatSidebar.css";
 
@@ -35,8 +36,10 @@ interface ChatSidebarProps {
 }
 
 export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserId, selectedGroupId }: ChatSidebarProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("chats");
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [groups, setGroups] = useState<Group[]>([
     {
       id: 101,
@@ -80,6 +83,16 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
     };
     setGroups(prev => [newGroup, ...prev]);
     setActiveTab("groups");
+  };
+
+  // Get logged-in user info from localStorage
+  const storedUser = localStorage.getItem("user");
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/");
   };
 
   return (
@@ -202,6 +215,34 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
           },
         ]}
       />
+
+      {/* User Info Panel at Bottom */}
+      <div className="sidebar-user-panel">
+        {showUserMenu && (
+          <div className="user-menu-dropdown">
+            <button className="logout-btn" onClick={handleLogout}>
+              <LogoutOutlined />
+              <span>Logout</span>
+            </button>
+          </div>
+        )}
+        <div
+          className="user-info"
+          onClick={() => setShowUserMenu(!showUserMenu)}
+        >
+          <Avatar
+            style={{ backgroundColor: '#1890ff', flexShrink: 0 }}
+            icon={<UserOutlined />}
+          >
+            {currentUser?.fullName?.[0]?.toUpperCase()}
+          </Avatar>
+          <div className="user-info-text">
+            <span className="user-name">{currentUser?.fullName || "User"}</span>
+            <span className="user-email">{currentUser?.email || ""}</span>
+          </div>
+          <UpOutlined className={`user-menu-arrow ${showUserMenu ? "open" : ""}`} />
+        </div>
+      </div>
     </div>
   );
 }

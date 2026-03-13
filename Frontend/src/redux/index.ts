@@ -1,6 +1,6 @@
 export { baseApiController } from "./baseApiController";
 export { baseApi } from "./baseApi";
-export { authApi, useGetMeQuery,useLazyGetMeQuery, useLoginMutation, useRegisterMutation, useLogoutMutation, useUpdateUserMutation, useDeleteAccountMutation,
+export { authApi, useGetMeQuery, useLazyGetMeQuery, useLoginMutation, useRegisterMutation, useLogoutMutation, useUpdateUserMutation,
   type User,
   type LoginRequest,
   type RegisterRequest,

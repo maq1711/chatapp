@@ -1,11 +1,14 @@
 import { baseApi } from "./baseApi";
 
-// --- Types (adjust to match your backend) ---
+// --- Types matching backend DTOs ---
 export interface User {
-  id: string;
+  id: number;
+  fullName: string;
   email: string;
-  name?: string;
+  profilePicture?: string;
+  bio?: string;
   createdAt?: string;
+  isOnline?: boolean;
 }
 
 export interface LoginRequest {
@@ -14,31 +17,38 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
+  fullName: string;
   email: string;
   password: string;
-  name?: string;
+  profilePicture?: string;
+  bio?: string;
 }
 
 export interface AuthResponse {
-  user: User;
+  id: number;
+  fullName: string;
+  email: string;
+  profilePicture?: string;
+  bio?: string;
   token: string;
+  tokenExpiry: string;
 }
 
 export interface UpdateUserRequest {
-  name?: string;
-  email?: string;
-  password?: string;
+  fullName?: string;
+  profilePicture?: string;
+  bio?: string;
 }
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
-    // --- Query: get current user (Read) ---
+    // GET profile (protected)
     getMe: build.query<User, void>({
-      query: () => ({ url: "auth/me" }),
+      query: () => ({ url: "auth/profile" }),
       providesTags: ["Auth", "User"],
     }),
 
-    // --- Mutations ---
+    // POST login
     login: build.mutation<AuthResponse, LoginRequest>({
       query: (body) => ({
         url: "auth/login",
@@ -48,6 +58,7 @@ export const authApi = baseApi.injectEndpoints({
       invalidatesTags: ["Auth", "User"],
     }),
 
+    // POST register
     register: build.mutation<AuthResponse, RegisterRequest>({
       query: (body) => ({
         url: "auth/register",
@@ -57,6 +68,7 @@ export const authApi = baseApi.injectEndpoints({
       invalidatesTags: ["Auth", "User"],
     }),
 
+    // POST logout (protected)
     logout: build.mutation<void, void>({
       query: () => ({
         url: "auth/logout",
@@ -65,26 +77,19 @@ export const authApi = baseApi.injectEndpoints({
       invalidatesTags: ["Auth", "User"],
     }),
 
+    // PUT update profile (protected)
     updateUser: build.mutation<User, UpdateUserRequest>({
       query: (body) => ({
-        url: "auth/me",
-        method: "PATCH",
+        url: "auth/profile",
+        method: "PUT",
         body,
-      }),
-      invalidatesTags: ["Auth", "User"],
-    }),
-
-    deleteAccount: build.mutation<void, void>({
-      query: () => ({
-        url: "auth/me",
-        method: "DELETE",
       }),
       invalidatesTags: ["Auth", "User"],
     }),
   }),
 });
 
-// --- Exported hooks (query & mutation) ---
+// --- Exported hooks ---
 export const {
   useGetMeQuery,
   useLazyGetMeQuery,
@@ -92,5 +97,4 @@ export const {
   useRegisterMutation,
   useLogoutMutation,
   useUpdateUserMutation,
-  useDeleteAccountMutation,
 } = authApi;
