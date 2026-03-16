@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Layout, Button } from "antd";
 import { MenuOutlined, CloseOutlined } from "@ant-design/icons";
 import ChatSidebar from "../components/ChatSidebar";
@@ -18,6 +18,12 @@ interface User {
   connectionId: string;
   lastMessage: string;
   time: string;
+  isOnline?: boolean;
+}
+
+interface ChatPreview {
+  lastMessage: string;
+  time: string;
 }
 
 interface Group {
@@ -35,6 +41,46 @@ export default function ChatLayout() {
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
+  const hasAutoSelectedInitialChat = useRef(false);
+  const [chatPreviews, setChatPreviews] = useState<Record<number, ChatPreview>>(() => {
+    try {
+      const raw = localStorage.getItem("chat-user-previews");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const chatPreviewsRef = useRef(chatPreviews);
+
+  useEffect(() => {
+    chatPreviewsRef.current = chatPreviews;
+  }, [chatPreviews]);
+
+  useEffect(() => {
+    if (hasAutoSelectedInitialChat.current) return;
+    if (selectedUser || selectedGroup) return;
+    if (onlineUsers.length === 0) return;
+
+    setSelectedUser(onlineUsers[0]);
+    hasAutoSelectedInitialChat.current = true;
+  }, [onlineUsers, selectedUser, selectedGroup]);
+
+  const handleUserPreviewUpdate = (userId: number, lastMessage: string, time: string) => {
+    setChatPreviews((prev) => {
+      const next = {
+        ...prev,
+        [userId]: { lastMessage, time },
+      };
+      localStorage.setItem("chat-user-previews", JSON.stringify(next));
+      return next;
+    });
+
+    setOnlineUsers((prev) =>
+      prev.map((user) =>
+        user.id === userId ? { ...user, lastMessage, time } : user
+      )
+    );
+  };
 
   // Connect to SignalR when chat page loads
   useEffect(() => {
@@ -49,11 +95,13 @@ export default function ChatLayout() {
       const others: User[] = users
         .filter((u) => u.id !== me)
         .map((u) => ({
+          ...u,
+          isOnline: true,
           id: u.id,
           name: u.name,
           connectionId: u.connectionId,
-          lastMessage: "Online",
-          time: "",
+          lastMessage: chatPreviewsRef.current[u.id]?.lastMessage || "Start chatting...",
+          time: chatPreviewsRef.current[u.id]?.time || "",
         }));
       setOnlineUsers(others);
 
@@ -62,7 +110,13 @@ export default function ChatLayout() {
         if (!prev) return prev;
         const updated = others.find(u => u.id === prev.id);
         if (updated && updated.connectionId !== prev.connectionId) {
-          return { ...prev, connectionId: updated.connectionId };
+          return {
+            ...prev,
+            connectionId: updated.connectionId,
+            isOnline: true,
+            lastMessage: updated.lastMessage,
+            time: updated.time,
+          };
         }
         return prev;
       });
@@ -145,6 +199,7 @@ export default function ChatLayout() {
           selectedUser={selectedUser} 
           selectedGroup={selectedGroup}
           chatType={selectedGroup ? 'group' : selectedUser ? 'user' : 'user'}
+          onUserPreviewUpdate={handleUserPreviewUpdate}
         />
       </Content>
     </Layout>

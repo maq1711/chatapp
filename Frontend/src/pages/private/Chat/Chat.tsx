@@ -1,22 +1,37 @@
-import { Input, Button, Dropdown, Badge, Tooltip, Avatar, Tag } from "antd";
+import { Input, Button, Dropdown, Avatar, Tag } from "antd";
 import { SendOutlined, MoreOutlined, EditOutlined, DeleteOutlined, UsergroupAddOutlined } from "@ant-design/icons";
 import { useState, useRef, useEffect } from "react";
 import type { MenuProps } from "antd";
 import {
   sendPrivateMessage,
+  deletePrivateMessage,
+  editPrivateMessage,
   sendGroupMessage,
+  deleteGroupMessage,
+  editGroupMessage,
+  joinGroupChat,
+  leaveGroupChat,
   onReceivePrivateMessage,
+  onPrivateMessageDeleted,
+  onPrivateMessageEdited,
   onReceiveGroupMessage,
+  onGroupMessageDeleted,
+  onGroupMessageEdited,
   isConnectionActive,
 } from "../../../services/signalRService";
 import "./Chat.css";
 
+const { TextArea } = Input;
+
 interface Message {
   id: number;
+  sharedId?: string;
   text: string;
   sender: "me" | "other";
   time: string;
   senderName?: string;
+  isDeleted?: boolean;
+  isEdited?: boolean;
 }
 
 interface User {
@@ -25,6 +40,7 @@ interface User {
   connectionId: string;
   lastMessage: string;
   time: string;
+  isOnline?: boolean;
 }
 
 interface Group {
@@ -41,25 +57,74 @@ interface ChatProps {
   selectedUser?: User | null;
   selectedGroup?: Group | null;
   chatType?: 'user' | 'group';
+  onUserPreviewUpdate?: (userId: number, lastMessage: string, time: string) => void;
 }
 
 // Helper function to get current time
 const getCurrentTime = () => {
   const now = new Date();
-  return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const time = now.toLocaleTimeString("en-PK", {
+    timeZone: "Asia/Karachi",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return time.replace("AM", "am").replace("PM", "pm");
+};
+
+const LINK_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+const LONG_MESSAGE_THRESHOLD = 280;
+
+const isLongMessage = (text: string) => text.trim().length > LONG_MESSAGE_THRESHOLD;
+
+const getCollapsedMessage = (text: string) => {
+  if (!isLongMessage(text)) return text;
+  return `${text.slice(0, LONG_MESSAGE_THRESHOLD).trimEnd()}...`;
+};
+
+const DELETED_MESSAGE_TEXT = "Message deleted by user...";
+
+const generateMessageId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const renderMessageContent = (text: string) => {
+  const parts = text.split(LINK_REGEX);
+  return parts.map((part, idx) => {
+    const isLink = /^https?:\/\//i.test(part) || /^www\./i.test(part);
+    if (!isLink) return <span key={`text-${idx}`}>{part}</span>;
+
+    const href = /^https?:\/\//i.test(part) ? part : `https://${part}`;
+    return (
+      <a
+        key={`link-${idx}`}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="message-link"
+      >
+        {part}
+      </a>
+    );
+  });
 };
 
 // Chat history stored per user/group id
 const chatHistory: Record<number, Message[]> = {};
 
-export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }: ChatProps) {
+export default function Chat({ selectedUser, selectedGroup, chatType = 'user', onUserPreviewUpdate }: ChatProps) {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
+  const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({});
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const activeGroupIdRef = useRef<string | null>(null);
 
   // Get current logged-in user info
   const storedUser = localStorage.getItem("user");
@@ -75,53 +140,172 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
   useEffect(() => {
     if (currentChatId) {
       setMessages(chatHistory[currentChatId] || []);
+      setExpandedMessages({});
     }
   }, [currentChatId]);
 
+  useEffect(() => {
+    const nextGroupId = isGroupChat && selectedGroup ? String(selectedGroup.id) : null;
+    const prevGroupId = activeGroupIdRef.current;
+
+    if (prevGroupId && prevGroupId !== nextGroupId) {
+      void leaveGroupChat(prevGroupId);
+    }
+
+    if (nextGroupId && prevGroupId !== nextGroupId) {
+      void joinGroupChat(nextGroupId);
+    }
+
+    activeGroupIdRef.current = nextGroupId;
+
+    return () => {
+      if (nextGroupId) {
+        void leaveGroupChat(nextGroupId);
+      }
+    };
+  }, [isGroupChat, selectedGroup?.id]);
+
+  const toggleExpandedMessage = (msgId: number) => {
+    setExpandedMessages((prev) => ({
+      ...prev,
+      [msgId]: !prev[msgId],
+    }));
+  };
+
+  const syncPrivatePreviewFromMessages = (updatedMessages: Message[]) => {
+    if (isGroupChat || !selectedUser) return;
+    if (updatedMessages.length === 0) {
+      onUserPreviewUpdate?.(selectedUser.id, "No messages yet", "");
+      return;
+    }
+    const latest = updatedMessages[updatedMessages.length - 1];
+    onUserPreviewUpdate?.(selectedUser.id, latest.text, latest.time);
+  };
+
   // Listen for incoming SignalR messages via callback registry (StrictMode safe)
   useEffect(() => {
-    const unsubPrivate = onReceivePrivateMessage((senderName, text, senderConnectionId, senderId) => {
+    const unsubPrivate = onReceivePrivateMessage((senderName, text, senderConnectionId, senderId, messageId, sentTime) => {
+      const messageTime = sentTime || getCurrentTime();
+      const privateChatId = senderId;
       const incoming: Message = {
         id: Date.now(),
+        sharedId: messageId,
         text,
         sender: "other",
-        time: getCurrentTime(),
+        time: messageTime,
         senderName,
       };
-      setMessages(prev => {
-        const updated = [...prev, incoming];
-        if (currentChatId) chatHistory[currentChatId] = updated;
-        return updated;
-      });
+      const existing = chatHistory[privateChatId] || [];
+      const updated = [...existing, incoming];
+      chatHistory[privateChatId] = updated;
+      if (!isGroupChat && currentChatId === privateChatId) {
+        setMessages(updated);
+      }
+
+      if (senderId) {
+        onUserPreviewUpdate?.(senderId, text, messageTime);
+      }
     });
 
-    const unsubGroup = onReceiveGroupMessage((senderName, text, senderConnectionId) => {
+    const unsubDeleted = onPrivateMessageDeleted((messageId) => {
+      Object.keys(chatHistory).forEach((key) => {
+        const conversationId = Number(key);
+        chatHistory[conversationId] = (chatHistory[conversationId] || []).map((m) =>
+          m.sharedId === messageId
+            ? { ...m, text: DELETED_MESSAGE_TEXT, isDeleted: true, isEdited: false }
+            : m
+        );
+      });
+
+      if (currentChatId) {
+        const updatedCurrent = chatHistory[currentChatId] || [];
+        setMessages(updatedCurrent);
+        if (!isGroupChat) {
+          syncPrivatePreviewFromMessages(updatedCurrent);
+        }
+      }
+    });
+
+    const unsubPrivateEdited = onPrivateMessageEdited((messageId, updatedText) => {
+      Object.keys(chatHistory).forEach((key) => {
+        const conversationId = Number(key);
+        chatHistory[conversationId] = (chatHistory[conversationId] || []).map((m) =>
+          m.sharedId === messageId
+            ? { ...m, text: updatedText, isEdited: true }
+            : m
+        );
+      });
+
+      if (currentChatId) {
+        const updatedCurrent = chatHistory[currentChatId] || [];
+        setMessages(updatedCurrent);
+        if (!isGroupChat) {
+          syncPrivatePreviewFromMessages(updatedCurrent);
+        }
+      }
+    });
+
+    const unsubGroup = onReceiveGroupMessage((senderName, text, senderConnectionId, messageId, groupId, sentTime) => {
       if (senderName === myName) return;
+      const groupChatId = Number(groupId);
       const incoming: Message = {
         id: Date.now(),
+        sharedId: messageId,
         text,
         sender: "other",
-        time: getCurrentTime(),
+        time: sentTime || getCurrentTime(),
         senderName,
       };
-      setMessages(prev => {
-        const updated = [...prev, incoming];
-        if (currentChatId) chatHistory[currentChatId] = updated;
-        return updated;
-      });
+      const existing = chatHistory[groupChatId] || [];
+      const updated = [...existing, incoming];
+      chatHistory[groupChatId] = updated;
+      if (isGroupChat && currentChatId === groupChatId) {
+        setMessages(updated);
+      }
+    });
+
+    const unsubGroupDeleted = onGroupMessageDeleted((messageId, groupId) => {
+      const groupChatId = Number(groupId);
+      const updated = (chatHistory[groupChatId] || []).map((m) =>
+          m.sharedId === messageId
+            ? { ...m, text: DELETED_MESSAGE_TEXT, isDeleted: true, isEdited: false }
+            : m
+      );
+      chatHistory[groupChatId] = updated;
+      if (isGroupChat && currentChatId === groupChatId) {
+        setMessages(updated);
+      }
+    });
+
+    const unsubGroupEdited = onGroupMessageEdited((messageId, updatedText, groupId) => {
+      const groupChatId = Number(groupId);
+      const updated = (chatHistory[groupChatId] || []).map((m) =>
+          m.sharedId === messageId
+            ? { ...m, text: updatedText, isEdited: true }
+            : m
+      );
+      chatHistory[groupChatId] = updated;
+      if (isGroupChat && currentChatId === groupChatId) {
+        setMessages(updated);
+      }
     });
 
     return () => {
       unsubPrivate();
+      unsubDeleted();
+      unsubPrivateEdited();
       unsubGroup();
+      unsubGroupDeleted();
+      unsubGroupEdited();
     };
-  }, [currentChatId, myName]);
+  }, [currentChatId, myName, isGroupChat, selectedUser?.id]);
 
   const sendMessage = async () => {
     if (!message.trim() || !currentChatId) return;
 
     const newMessage: Message = { 
       id: Date.now(), 
+      sharedId: generateMessageId(),
       text: message, 
       sender: "me",
       time: getCurrentTime()
@@ -134,9 +318,10 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
     // Send via SignalR if connected
     if (isConnectionActive()) {
       if (isGroupChat && selectedGroup) {
-        await sendGroupMessage(message);
+        await sendGroupMessage(String(selectedGroup.id), message, newMessage.sharedId || generateMessageId(), newMessage.time);
       } else if (selectedUser) {
-        await sendPrivateMessage(message, selectedUser.connectionId);
+        await sendPrivateMessage(message, selectedUser.connectionId, newMessage.sharedId || generateMessageId(), newMessage.time);
+        onUserPreviewUpdate?.(selectedUser.id, message, newMessage.time);
       }
     }
 
@@ -151,19 +336,33 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
     }
   };
 
-  const saveEdit = (msgId: number) => {
+  const saveEdit = async (msgId: number) => {
     if (!editText.trim()) return;
+    const target = messages.find((m) => m.id === msgId);
+    if (!target) return;
     
     const updatedMessages = messages.map(m => 
-      m.id === msgId ? { ...m, text: editText } : m
+      m.id === msgId ? { ...m, text: editText, isEdited: true } : m
     );
     
     setMessages(updatedMessages);
     if (currentChatId) {
       chatHistory[currentChatId] = updatedMessages;
     }
+    syncPrivatePreviewFromMessages(updatedMessages);
     setEditingMessageId(null);
     setEditText("");
+
+    if (!target.sharedId || !isConnectionActive()) return;
+
+    if (!isGroupChat && selectedUser) {
+      await editPrivateMessage(selectedUser.connectionId, target.sharedId, editText);
+      return;
+    }
+
+    if (isGroupChat) {
+      await editGroupMessage(String(selectedGroup?.id || ""), target.sharedId, editText);
+    }
   };
 
   const cancelEdit = () => {
@@ -171,11 +370,34 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
     setEditText("");
   };
 
-  const handleDelete = (msgId: number) => {
-    const updatedMessages = messages.filter(m => m.id !== msgId);
+  const handleDelete = async (msgId: number) => {
+    const target = messages.find((m) => m.id === msgId);
+    if (!target) return;
+
+    const updatedMessages = messages.map((m) =>
+      m.id === msgId
+        ? { ...m, text: DELETED_MESSAGE_TEXT, isDeleted: true, isEdited: false }
+        : m
+    );
+
     setMessages(updatedMessages);
     if (currentChatId) {
       chatHistory[currentChatId] = updatedMessages;
+    }
+    syncPrivatePreviewFromMessages(updatedMessages);
+    setExpandedMessages((prev) => {
+      const next = { ...prev };
+      delete next[msgId];
+      return next;
+    });
+
+    if (!isGroupChat && selectedUser && target.sharedId && isConnectionActive()) {
+      await deletePrivateMessage(selectedUser.connectionId, target.sharedId);
+      return;
+    }
+
+    if (isGroupChat && target.sharedId && isConnectionActive()) {
+      await deleteGroupMessage(String(selectedGroup?.id || ""), target.sharedId);
     }
   };
 
@@ -232,6 +454,7 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
         </div>
       </div>
 
+
       {/* Messages */}
       <div className="chat-messages">
 
@@ -253,16 +476,23 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
         ) : (
           <>
             {messages.map((msg) => (
+              
               <div
                 key={msg.id}
                 className={`message-wrapper ${msg.sender === "me" ? "sent" : "received"}`}
               >
                 {editingMessageId === msg.id ? (
                   <div className={`message-bubble editing ${msg.sender === "me" ? "sent" : "received"}`}>
-                    <Input
+                    <TextArea
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
-                      onPressEnter={() => saveEdit(msg.id)}
+                      autoSize={{ minRows: 1, maxRows: 6 }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          saveEdit(msg.id);
+                        }
+                      }}
                       autoFocus
                       className="edit-input"
                     />
@@ -285,8 +515,23 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
                       </div>
                     )}
                     <div className={`message-bubble ${msg.sender === "me" ? "sent" : "received"}`}>
-                      <span className="message-text">{msg.text}</span>
-                      {msg.sender === "me" && (
+                      <span className="message-text">
+                        {renderMessageContent(
+                          isLongMessage(msg.text) && !expandedMessages[msg.id]
+                            ? getCollapsedMessage(msg.text)
+                            : msg.text
+                        )}
+                        {isLongMessage(msg.text) && !msg.isDeleted && (
+                          <button
+                            type="button"
+                            className="message-expand-btn"
+                            onClick={() => toggleExpandedMessage(msg.id)}
+                          >
+                            {expandedMessages[msg.id] ? "Show less" : "See more"}
+                          </button>
+                        )}
+                      </span>
+                      {msg.sender === "me" && !msg.isDeleted && (
                         <Dropdown menu={{ items: getMenuItems(msg.id) }} trigger={['click']} placement="bottomRight">
                           <Button 
                             type="text" 
@@ -297,24 +542,36 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user' }:
                         </Dropdown>
                       )}
                     </div>
-                    <span className="message-time">{msg.time}</span>
+                    
+                    <span className="message-time">{msg.time}{msg.isEdited ? " · edited" : ""}</span>
                   </>
                 )}
+                
               </div>
+              
             ))}
+            
             <div ref={messagesEndRef} className="messages-end-ref" />
+
           </>
+          
         )}
 
       </div>
 
       {/* Message input */}
       <div className="chat-input-container">
-        <Input
+        <TextArea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder={isGroupChat && selectedGroup ? `Message ${selectedGroup.name}...` : selectedUser ? `Message ${selectedUser.name}...` : "Select a chat first"}
-          onPressEnter={sendMessage}
+          autoSize={{ minRows: 1, maxRows: 4 }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void sendMessage();
+            }
+          }}
           disabled={!selectedUser && !selectedGroup}
         />
 

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { List, Avatar, Input, Tabs, Badge } from "antd";
 import { MessageOutlined, UsergroupAddOutlined, LogoutOutlined, UserOutlined, UpOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import GroupManagement from "./GroupManagement";
+import { createGroupChat, onGroupCreated, type GroupMember } from "../services/signalRService";
 import "./ChatSidebar.css";
 
 interface User {
@@ -11,6 +12,8 @@ interface User {
   connectionId: string;
   lastMessage: string;
   time: string;
+  isOnline?: boolean;
+  isAdmin?: boolean;
 }
 
 interface Group {
@@ -20,6 +23,7 @@ interface Group {
   lastMessage: string;
   time: string;
   members: User[];
+  adminId?: number;
   createdAt: Date;
 }
 
@@ -47,12 +51,70 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
     },
   ]);
 
+  useEffect(() => {
+    const unsubGroupCreated = onGroupCreated((groupId, groupName, description, members, adminId) => {
+      const parsedId = Number(groupId);
+      const mappedMembers: User[] = members.map((member) => ({
+        id: member.id,
+        name: member.name,
+        connectionId: member.connectionId,
+        lastMessage: "",
+        time: "",
+        isAdmin: member.isAdmin ?? member.id === adminId,
+      }));
+
+      const incomingGroup: Group = {
+        id: Number.isFinite(parsedId) ? parsedId : Date.now(),
+        name: groupName,
+        description: description || undefined,
+        lastMessage: "Group created",
+        time: "Now",
+        members: mappedMembers,
+        adminId,
+        createdAt: new Date(),
+      };
+
+      setGroups((prev) => {
+        const exists = prev.some((g) => String(g.id) === String(incomingGroup.id));
+        if (exists) {
+          return prev.map((g) =>
+            String(g.id) === String(incomingGroup.id)
+              ? { ...g, ...incomingGroup }
+              : g
+          );
+        }
+        return [incomingGroup, ...prev];
+      });
+    });
+
+    return () => {
+      unsubGroupCreated();
+    };
+  }, []);
+
+  const truncatePreview = (text: string, maxWords = 8, maxChars = 60) => {
+    const normalized = text.replace(/\s+/g, " ").trim();
+    if (!normalized) return "No messages yet";
+
+    const words = normalized.split(" ");
+    let preview = words.slice(0, maxWords).join(" ");
+    if (words.length > maxWords) {
+      preview += "...";
+    }
+
+    if (preview.length > maxChars) {
+      return `${preview.slice(0, maxChars).trim()}...`;
+    }
+
+    return preview;
+  };
+
   // Filter users based on search query (minimum 2 characters)
   const filteredUsers = searchQuery.length >= 2
     ? onlineUsers.filter((user) => {
         const query = searchQuery.toLowerCase();
         const nameMatch = user.name.toLowerCase().includes(query);
-        const messageMatch = user.lastMessage.toLowerCase().includes(query);
+        const messageMatch = (user.lastMessage || "").toLowerCase().includes(query);
         return nameMatch || messageMatch;
       })
     : onlineUsers;
@@ -69,13 +131,40 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
     : groups;
 
   const handleCreateGroup = (groupData: { name: string; description?: string; members: User[] }) => {
+    const creatorId = Number(currentUser?.id);
+    const creatorName = currentUser?.fullName || "You";
+
+    const creatorMember: User = {
+      id: creatorId,
+      name: creatorName,
+      connectionId: "self",
+      lastMessage: "",
+      time: "",
+      isAdmin: true,
+    };
+
+    const nonCreatorMembers = groupData.members
+      .filter((member) => member.id !== creatorId)
+      .map((member) => ({ ...member, isAdmin: member.isAdmin ?? false }));
+
     const newGroup: Group = {
       ...groupData,
       id: Date.now(),
       lastMessage: "Group created",
       time: "Now",
+      members: [creatorMember, ...nonCreatorMembers],
+      adminId: Number.isFinite(creatorId) ? creatorId : undefined,
       createdAt: new Date(),
     };
+
+    void createGroupChat(
+      String(newGroup.id),
+      newGroup.name,
+      newGroup.description,
+      newGroup.members.map((member) => member.id),
+      creatorId
+    );
+
     setGroups(prev => [newGroup, ...prev]);
     setActiveTab("groups");
   };
@@ -85,6 +174,10 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
   const currentUser = storedUser ? JSON.parse(storedUser) : null;
 
   const handleLogout = () => {
+    const rememberedEmail = currentUser?.email;
+    // if (rememberedEmail) {
+    //   localStorage.setItem("rememberedEmail", rememberedEmail);
+    // }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/");
@@ -134,12 +227,14 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
                     onClick={() => onSelectUser(user)}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '8px 12px', gap: '12px' }}>
-                      <Avatar style={{ backgroundColor: '#1890ff' }}>{user.name[0]}</Avatar>
+                      <Badge dot={user.isOnline} color="#22c55e" offset={[-2, 30]}>
+                        <Avatar style={{ backgroundColor: '#1890ff' }}>{user.name[0]}</Avatar>
+                      </Badge>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="list-item-title">{user.name}</div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                           <span className="list-item-description" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {user.lastMessage}
+                            {truncatePreview(user.lastMessage || "")}
                           </span>
                           <span className="list-item-time">{user.time}</span>
                         </div>
@@ -196,7 +291,7 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                             <span className="list-item-description" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {group.lastMessage}
+                              {truncatePreview(group.lastMessage || "")}
                             </span>
                             <span className="list-item-time">{group.time}</span>
                           </div>

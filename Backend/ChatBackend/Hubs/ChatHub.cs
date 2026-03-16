@@ -10,6 +10,14 @@ public class ConnectedUser
     public string ConnectionId { get; set; } = string.Empty;
 }
 
+public class GroupMemberInfo
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string ConnectionId { get; set; } = string.Empty;
+    public bool IsAdmin { get; set; }
+}
+
 public class ChatHub : Hub
 {
     // Static dictionary: connectionId -> user info
@@ -77,7 +85,7 @@ public class ChatHub : Hub
     }
 
     // Send private message using receiver's connectionId
-    public async Task SendPrivateMessage(string message, string receiverConnectionId)
+    public async Task SendPrivateMessage(string message, string receiverConnectionId, string messageId, string sentTime)
     {
         var senderConnectionId = Context.ConnectionId;
 
@@ -95,7 +103,9 @@ public class ChatHub : Hub
                 sender.Name,
                 message,
                 senderConnectionId,
-                sender.Id
+                sender.Id,
+                messageId,
+                sentTime
             );
         }
         else
@@ -105,17 +115,139 @@ public class ChatHub : Hub
         }
     }
 
+    // Join a logical chat group (group id string)
+    public async Task JoinGroupChat(string groupId)
+    {
+        if (string.IsNullOrWhiteSpace(groupId))
+            return;
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, groupId);
+    }
+
+    // Leave a logical chat group (group id string)
+    public async Task LeaveGroupChat(string groupId)
+    {
+        if (string.IsNullOrWhiteSpace(groupId))
+            return;
+
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupId);
+    }
+
+    // Create a chat group and notify all selected members
+    public async Task CreateGroupChat(string groupId, string groupName, string? description, int[] memberIds, int adminId)
+    {
+        var creatorConnectionId = Context.ConnectionId;
+
+        if (!ConnectedUsers.ContainsKey(creatorConnectionId))
+            return;
+
+        if (string.IsNullOrWhiteSpace(groupId) || string.IsNullOrWhiteSpace(groupName))
+            return;
+
+        var targetMemberIds = (memberIds ?? Array.Empty<int>()).ToHashSet();
+        targetMemberIds.Add(adminId);
+
+        var members = ConnectedUsers.Values
+            .Where(u => targetMemberIds.Contains(u.Id))
+            .GroupBy(u => u.Id)
+            .Select(g => g.First())
+            .Select(u => new GroupMemberInfo
+            {
+                Id = u.Id,
+                Name = u.Name,
+                ConnectionId = u.ConnectionId,
+                IsAdmin = u.Id == adminId,
+            })
+            .ToList();
+
+        var connectionIds = members.Select(m => m.ConnectionId).Distinct().ToList();
+
+        // Ensure all selected members are in this SignalR group channel
+        foreach (var connectionId in connectionIds)
+        {
+            await Groups.AddToGroupAsync(connectionId, groupId);
+        }
+
+        await Clients.Clients(connectionIds).SendAsync(
+            "GroupCreated",
+            groupId,
+            groupName,
+            description,
+            members,
+            adminId
+        );
+    }
+
+    // Mark a private message as deleted for receiver side as well
+    public async Task DeletePrivateMessage(string receiverConnectionId, string messageId)
+    {
+        var senderConnectionId = Context.ConnectionId;
+
+        if (!ConnectedUsers.ContainsKey(senderConnectionId))
+            return;
+
+        if (!ConnectedUsers.ContainsKey(receiverConnectionId))
+            return;
+
+        await Clients.Client(receiverConnectionId).SendAsync("PrivateMessageDeleted", messageId);
+    }
+
+    // Mark a private message as edited for receiver side as well
+    public async Task EditPrivateMessage(string receiverConnectionId, string messageId, string updatedText)
+    {
+        var senderConnectionId = Context.ConnectionId;
+
+        if (!ConnectedUsers.ContainsKey(senderConnectionId))
+            return;
+
+        if (!ConnectedUsers.ContainsKey(receiverConnectionId))
+            return;
+
+        await Clients.Client(receiverConnectionId).SendAsync("PrivateMessageEdited", messageId, updatedText);
+    }
+
     // Send group message to all others
-    public async Task SendGroupMessage(string message)
+    public async Task SendGroupMessage(string groupId, string message, string messageId, string sentTime)
     {
         var connectionId = Context.ConnectionId;
 
         if (!ConnectedUsers.ContainsKey(connectionId))
             return;
 
+        if (string.IsNullOrWhiteSpace(groupId))
+            return;
+
         var sender = ConnectedUsers[connectionId];
 
-        // Send to all EXCEPT the sender
-        await Clients.Others.SendAsync("ReceiveGroupMessage", sender.Name, message, connectionId);
+        // Send only to users in this specific group, excluding sender
+        await Clients.OthersInGroup(groupId).SendAsync("ReceiveGroupMessage", sender.Name, message, connectionId, messageId, groupId, sentTime);
+    }
+
+    // Mark a group message as edited for everyone except sender
+    public async Task EditGroupMessage(string groupId, string messageId, string updatedText)
+    {
+        var connectionId = Context.ConnectionId;
+
+        if (!ConnectedUsers.ContainsKey(connectionId))
+            return;
+
+        if (string.IsNullOrWhiteSpace(groupId))
+            return;
+
+        await Clients.OthersInGroup(groupId).SendAsync("GroupMessageEdited", messageId, updatedText, groupId);
+    }
+
+    // Mark a group message as deleted for everyone except sender
+    public async Task DeleteGroupMessage(string groupId, string messageId)
+    {
+        var connectionId = Context.ConnectionId;
+
+        if (!ConnectedUsers.ContainsKey(connectionId))
+            return;
+
+        if (string.IsNullOrWhiteSpace(groupId))
+            return;
+
+        await Clients.OthersInGroup(groupId).SendAsync("GroupMessageDeleted", messageId, groupId);
     }
 }

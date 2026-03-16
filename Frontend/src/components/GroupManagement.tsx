@@ -9,6 +9,7 @@ interface User {
   connectionId: string;
   lastMessage: string;
   time: string;
+  isAdmin?: boolean;
 }
 
 interface GroupManagementProps {
@@ -25,11 +26,6 @@ export default function GroupManagement({ availableUsers, onCreateGroup }: Group
   const handleCreateGroup = () => {
     if (!groupName.trim()) {
       message.error("Group name is required");
-      return;
-    }
-
-    if (selectedMembers.length < 3) {
-      message.error("Please add at least 3 members to create a group");
       return;
     }
 
@@ -85,7 +81,7 @@ export default function GroupManagement({ availableUsers, onCreateGroup }: Group
         open={isModalOpen}
         onCancel={handleCloseModal}
         centered
-        wrapperClassName="group-modal-wrapper"
+        // wrapperClassName="group-modal-wrapper"
         footer={[
           <Button key="cancel" onClick={handleCloseModal}>
             Cancel
@@ -94,7 +90,7 @@ export default function GroupManagement({ availableUsers, onCreateGroup }: Group
             key="create" 
             type="primary" 
             onClick={handleCreateGroup}
-            disabled={!groupName.trim() || selectedMembers.length < 3}
+            disabled={!groupName.trim()}
           >
             Create Group
           </Button>,
@@ -135,7 +131,7 @@ export default function GroupManagement({ availableUsers, onCreateGroup }: Group
           {selectedMembers.length > 0 && (
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
-                Selected Members ({selectedMembers.length}/3 minimum)
+                Selected Members ({selectedMembers.length})
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {selectedMembers.map(userId => {
@@ -158,7 +154,7 @@ export default function GroupManagement({ availableUsers, onCreateGroup }: Group
           {/* Add Members */}
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
-              Add Members (Minimum 3 required) <span style={{ color: 'red' }}>*</span>
+              Add Members (Optional)
             </label>
             <List
               className="member-selection-list"

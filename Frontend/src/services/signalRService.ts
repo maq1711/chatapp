@@ -7,16 +7,33 @@ export interface ConnectedUser {
   connectionId: string
 }
 
+export interface GroupMember {
+  id: number
+  name: string
+  connectionId: string
+  isAdmin?: boolean
+}
+
 // Callback types
 type UserListCallback = (users: ConnectedUser[]) => void
-type PrivateMessageCallback = (senderName: string, message: string, senderConnectionId: string, senderId: number) => void
-type GroupMessageCallback = (senderName: string, message: string, senderConnectionId: string) => void
+type PrivateMessageCallback = (senderName: string, message: string, senderConnectionId: string, senderId: number, messageId: string, sentTime: string) => void
+type GroupMessageCallback = (senderName: string, message: string, senderConnectionId: string, messageId: string, groupId: string, sentTime: string) => void
+type PrivateMessageDeletedCallback = (messageId: string) => void
+type PrivateMessageEditedCallback = (messageId: string, updatedText: string) => void
+type GroupMessageDeletedCallback = (messageId: string, groupId: string) => void
+type GroupMessageEditedCallback = (messageId: string, updatedText: string, groupId: string) => void
+type GroupCreatedCallback = (groupId: string, groupName: string, description: string | null, members: GroupMember[], adminId: number) => void
 
 // Callback registries — these persist across connection rebuilds (StrictMode safe)
 const callbacks = {
   userList: new Set<UserListCallback>(),
   privateMessage: new Set<PrivateMessageCallback>(),
   groupMessage: new Set<GroupMessageCallback>(),
+  privateMessageDeleted: new Set<PrivateMessageDeletedCallback>(),
+  privateMessageEdited: new Set<PrivateMessageEditedCallback>(),
+  groupMessageDeleted: new Set<GroupMessageDeletedCallback>(),
+  groupMessageEdited: new Set<GroupMessageEditedCallback>(),
+  groupCreated: new Set<GroupCreatedCallback>(),
 }
 
 let connection: signalR.HubConnection | null = null
@@ -50,26 +67,46 @@ export const startConnection = async (userId: string, userName: string) => {
     callbacks.userList.forEach(cb => cb(users))
   })
 
-  connection.on("ReceivePrivateMessage", (senderName: string, message: string, senderConnectionId: string, senderId: number) => {
-    callbacks.privateMessage.forEach(cb => cb(senderName, message, senderConnectionId, senderId))
+  connection.on("ReceivePrivateMessage", (senderName: string, message: string, senderConnectionId: string, senderId: number, messageId: string, sentTime: string) => {
+    callbacks.privateMessage.forEach(cb => cb(senderName, message, senderConnectionId, senderId, messageId, sentTime))
   })
 
-  connection.on("ReceiveGroupMessage", (senderName: string, message: string, senderConnectionId: string) => {
-    callbacks.groupMessage.forEach(cb => cb(senderName, message, senderConnectionId))
+  connection.on("PrivateMessageDeleted", (messageId: string) => {
+    callbacks.privateMessageDeleted.forEach(cb => cb(messageId))
+  })
+
+  connection.on("PrivateMessageEdited", (messageId: string, updatedText: string) => {
+    callbacks.privateMessageEdited.forEach(cb => cb(messageId, updatedText))
+  })
+
+  connection.on("ReceiveGroupMessage", (senderName: string, message: string, senderConnectionId: string, messageId: string, groupId: string, sentTime: string) => {
+    callbacks.groupMessage.forEach(cb => cb(senderName, message, senderConnectionId, messageId, groupId, sentTime))
+  })
+
+  connection.on("GroupMessageDeleted", (messageId: string, groupId: string) => {
+    callbacks.groupMessageDeleted.forEach(cb => cb(messageId, groupId))
+  })
+
+  connection.on("GroupMessageEdited", (messageId: string, updatedText: string, groupId: string) => {
+    callbacks.groupMessageEdited.forEach(cb => cb(messageId, updatedText, groupId))
+  })
+
+  connection.on("GroupCreated", (groupId: string, groupName: string, description: string | null, members: GroupMember[], adminId: number) => {
+    callbacks.groupCreated.forEach(cb => cb(groupId, groupName, description, members, adminId))
   })
 
   connection.onreconnecting(() => {
-    console.log("Reconnecting to SignalR hub...")
+    // console.log("Reconnecting to SignalR hub...")
     isConnected = false
   })
 
   connection.onreconnected(() => {
-    console.log("Reconnected to SignalR hub")
+    // console.log("Reconnected to SignalR hub")
     isConnected = true
   })
 
   connection.onclose(() => {
-    console.log("Connection closed")
+    // console.log("Connection closed")
     isConnected = false
   })
 
@@ -81,11 +118,11 @@ export const startConnection = async (userId: string, userName: string) => {
       return
     }
     isConnected = true
-    console.log("Connected to SignalR hub")
+    // console.log("Connected to SignalR hub")
   } catch (err) {
     // Only retry if this is still the latest attempt
     if (myAttempt !== attemptId) return
-    console.error("SignalR connection error:", err)
+    // console.error("SignalR connection error:", err)
     isConnected = false
     setTimeout(() => startConnection(userId, userName), 5000)
   }
@@ -100,7 +137,7 @@ export const stopConnection = async () => {
     }
     isConnected = false
   } catch (err) {
-    console.error("Error disconnecting:", err)
+    // console.error("Error disconnecting:", err)
   }
 }
 
@@ -111,28 +148,94 @@ export const isConnectionActive = () =>
 // ===== SEND MESSAGE METHODS =====
 
 // Send private message using receiver's connectionId
-export const sendPrivateMessage = async (message: string, receiverConnectionId: string) => {
+export const sendPrivateMessage = async (message: string, receiverConnectionId: string, messageId: string, sentTime: string) => {
   try {
     if (!isConnectionActive() || !connection) {
-      console.error("Not connected to hub")
+      // console.error("Not connected to hub")
       return
     }
-    await connection.invoke("SendPrivateMessage", message, receiverConnectionId)
+    await connection.invoke("SendPrivateMessage", message, receiverConnectionId, messageId, sentTime)
   } catch (err) {
-    console.error("Error sending private message:", err)
+    // console.error("Error sending private message:", err)
+  }
+}
+
+export const deletePrivateMessage = async (receiverConnectionId: string, messageId: string) => {
+  try {
+    if (!isConnectionActive() || !connection) {
+      return
+    }
+    await connection.invoke("DeletePrivateMessage", receiverConnectionId, messageId)
+  } catch (err) {
+    // console.error("Error deleting private message:", err)
+  }
+}
+
+export const editPrivateMessage = async (receiverConnectionId: string, messageId: string, updatedText: string) => {
+  try {
+    if (!isConnectionActive() || !connection) {
+      return
+    }
+    await connection.invoke("EditPrivateMessage", receiverConnectionId, messageId, updatedText)
+  } catch (err) {
+    // console.error("Error editing private message:", err)
   }
 }
 
 // Send group message to all others
-export const sendGroupMessage = async (message: string) => {
+export const sendGroupMessage = async (groupId: string, message: string, messageId: string, sentTime: string) => {
   try {
     if (!isConnectionActive() || !connection) {
-      console.error("Not connected to hub")
+      // console.error("Not connected to hub")
       return
     }
-    await connection.invoke("SendGroupMessage", message)
+    await connection.invoke("SendGroupMessage", groupId, message, messageId, sentTime)
   } catch (err) {
-    console.error("Error sending group message:", err)
+    // console.error("Error sending group message:", err)
+  }
+}
+
+export const deleteGroupMessage = async (groupId: string, messageId: string) => {
+  try {
+    if (!isConnectionActive() || !connection) {
+      return
+    }
+    await connection.invoke("DeleteGroupMessage", groupId, messageId)
+  } catch (err) {
+    // console.error("Error deleting group message:", err)
+  }
+}
+
+export const editGroupMessage = async (groupId: string, messageId: string, updatedText: string) => {
+  try {
+    if (!isConnectionActive() || !connection) {
+      return
+    }
+    await connection.invoke("EditGroupMessage", groupId, messageId, updatedText)
+  } catch (err) {
+    // console.error("Error editing group message:", err)
+  }
+}
+
+export const joinGroupChat = async (groupId: string) => {
+  try {
+    if (!isConnectionActive() || !connection) {
+      return
+    }
+    await connection.invoke("JoinGroupChat", groupId)
+  } catch (err) {
+    // console.error("Error joining group chat:", err)
+  }
+}
+
+export const leaveGroupChat = async (groupId: string) => {
+  try {
+    if (!isConnectionActive() || !connection) {
+      return
+    }
+    await connection.invoke("LeaveGroupChat", groupId)
+  } catch (err) {
+    // console.error("Error leaving group chat:", err)
   }
 }
 
@@ -150,7 +253,43 @@ export const onReceivePrivateMessage = (cb: PrivateMessageCallback) => {
   return () => { callbacks.privateMessage.delete(cb) }
 }
 
+export const onPrivateMessageDeleted = (cb: PrivateMessageDeletedCallback) => {
+  callbacks.privateMessageDeleted.add(cb)
+  return () => { callbacks.privateMessageDeleted.delete(cb) }
+}
+
+export const onPrivateMessageEdited = (cb: PrivateMessageEditedCallback) => {
+  callbacks.privateMessageEdited.add(cb)
+  return () => { callbacks.privateMessageEdited.delete(cb) }
+}
+
 export const onReceiveGroupMessage = (cb: GroupMessageCallback) => {
   callbacks.groupMessage.add(cb)
   return () => { callbacks.groupMessage.delete(cb) }
+}
+
+export const onGroupMessageDeleted = (cb: GroupMessageDeletedCallback) => {
+  callbacks.groupMessageDeleted.add(cb)
+  return () => { callbacks.groupMessageDeleted.delete(cb) }
+}
+
+export const onGroupMessageEdited = (cb: GroupMessageEditedCallback) => {
+  callbacks.groupMessageEdited.add(cb)
+  return () => { callbacks.groupMessageEdited.delete(cb) }
+}
+
+export const createGroupChat = async (groupId: string, groupName: string, description: string | undefined, memberIds: number[], adminId: number) => {
+  try {
+    if (!isConnectionActive() || !connection) {
+      return
+    }
+    await connection.invoke("CreateGroupChat", groupId, groupName, description ?? null, memberIds, adminId)
+  } catch (err) {
+    // console.error("Error creating group chat:", err)
+  }
+}
+
+export const onGroupCreated = (cb: GroupCreatedCallback) => {
+  callbacks.groupCreated.add(cb)
+  return () => { callbacks.groupCreated.delete(cb) }
 }
