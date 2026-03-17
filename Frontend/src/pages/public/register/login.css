@@ -1,7 +1,7 @@
-.login-container h2 {
+.login-container h3 {
     color: var(--color-text);
-    font-size: 24px;
-    font-weight: 600;
+    font-size: 18px;
+    /* font-weight: 600; */
 }
 
 .login-container input {

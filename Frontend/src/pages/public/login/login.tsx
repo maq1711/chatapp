@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useLoginMutation } from "../../../redux";
+import bgImage from "../../../assets/images/bg.jpg";
 import "./login.css";
 
 export default function Login() {
@@ -33,11 +34,10 @@ export default function Login() {
   };
 
   return (
-    <div
-      style={{ width: "300px", margin: "100px auto" }}
-      className="login-container"
-    >
-      <h2>Login</h2>
+    <div className="auth-page" style={{ backgroundImage: `url(${bgImage})` }}>
+      <div className="login-container">
+      <h1 className="auth-title">ChatApp</h1>
+      <h3>Login</h3>
 
       {error && <p style={{ color: "red", fontSize: "14px", marginBottom: "10px" }}>{error}</p>}
 
@@ -67,6 +67,7 @@ export default function Login() {
 
       <p style={{ margin: "10px 0" }}>
         Don't have an account? <Link to="/register">Register</Link></p>
+      </div>
     </div>
   );
 }

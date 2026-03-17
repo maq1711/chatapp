@@ -33,22 +33,23 @@ interface ChatSidebarProps {
   selectedUserId?: number;
   selectedGroupId?: number;
   onlineUsers: User[];
+  onRequestMobileClose?: () => void;
 }
 
-export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserId, selectedGroupId, onlineUsers }: ChatSidebarProps) {
+export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserId, selectedGroupId, onlineUsers, onRequestMobileClose }: ChatSidebarProps) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("chats");
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [groups, setGroups] = useState<Group[]>([
-    {
-      id: 101,
-      name: "Project Team",
-      lastMessage: "Let's meet tomorrow",
-      time: "11:45",
-      members: [],
-      createdAt: new Date(),
-    },
+    // {
+    //   id: 101,
+    //   name: "Project Team",
+    //   lastMessage: "Let's meet tomorrow",
+    //   time: "11:45",
+    //   members: [],
+    //   createdAt: new Date(),
+    // },
   ]);
 
   useEffect(() => {
@@ -183,6 +184,12 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
     navigate("/");
   };
 
+  const handleCreateGroupModalOpen = () => {
+    if (window.innerWidth <= 768) {
+      onRequestMobileClose?.();
+    }
+  };
+
   return (
     <div className="chat-sidebar">
 
@@ -260,6 +267,7 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
                   <GroupManagement 
                     availableUsers={onlineUsers} 
                     onCreateGroup={handleCreateGroup}
+                    onModalOpen={handleCreateGroupModalOpen}
                   />
                 </div>
                 <List

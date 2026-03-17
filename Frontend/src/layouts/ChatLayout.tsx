@@ -149,6 +149,12 @@ export default function ChatLayout() {
     }
   };
 
+  const handleRequestMobileSidebarClose = () => {
+    if (window.innerWidth <= 768) {
+      setSidebarVisible(false);
+    }
+  };
+
   return (
     <Layout style={{ height: "100vh" }} className="chat-layout">
       {/* Hamburger Menu Button */}
@@ -185,6 +191,7 @@ export default function ChatLayout() {
           selectedUserId={selectedUser?.id} 
           selectedGroupId={selectedGroup?.id}
           onlineUsers={onlineUsers}
+          onRequestMobileClose={handleRequestMobileSidebarClose}
         />
       </Sider>
 

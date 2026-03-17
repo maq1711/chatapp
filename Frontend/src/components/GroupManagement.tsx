@@ -15,13 +15,19 @@ interface User {
 interface GroupManagementProps {
   availableUsers: User[];
   onCreateGroup: (group: { name: string; description?: string; members: User[] }) => void;
+  onModalOpen?: () => void;
 }
 
-export default function GroupManagement({ availableUsers, onCreateGroup }: GroupManagementProps) {
+export default function GroupManagement({ availableUsers, onCreateGroup, onModalOpen }: GroupManagementProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
+
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+    onModalOpen?.();
+  };
 
   const handleCreateGroup = () => {
     if (!groupName.trim()) {
@@ -65,7 +71,7 @@ export default function GroupManagement({ availableUsers, onCreateGroup }: Group
       <Button
         type="primary"
         icon={<PlusOutlined />}
-        onClick={() => setIsModalOpen(true)}
+        onClick={handleOpenModal}
         style={{ width: '100%', marginBottom: '12px' }}
       >
         Create Group

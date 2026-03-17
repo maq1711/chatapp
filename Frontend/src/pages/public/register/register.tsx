@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useRegisterMutation } from "../../../redux";
+import bgImage from "../../../assets/images/bg.jpg";
 import "./login.css";
 
 export default function Register() {
@@ -41,11 +42,10 @@ export default function Register() {
   };
 
   return (
-    <div
-      style={{ width: "300px", margin: "100px auto" }}
-      className="login-container"
-    >
-      <h2>Register</h2>
+    <div className="auth-page" style={{ backgroundImage: `url(${bgImage})` }}>
+      <div className="login-container">
+      <h1 className="auth-title">ChatApp</h1>
+      <h3>Register</h3>
 
       {error && <p style={{ color: "red", fontSize: "14px", marginBottom: "10px" }}>{error}</p>}
 
@@ -94,6 +94,7 @@ export default function Register() {
       <p style={{ margin: "10px 0" }}>
         Already have an account? <Link to="/">Login</Link>
       </p>
+      </div>
     </div>
   );
 }
