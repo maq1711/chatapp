@@ -58,6 +58,7 @@ interface ChatProps {
   selectedGroup?: Group | null;
   chatType?: 'user' | 'group';
   onUserPreviewUpdate?: (userId: number, lastMessage: string, time: string) => void;
+  onOpenGroupInfo?: (group: Group) => void;
 }
 
 // Helper function to get current time
@@ -115,7 +116,7 @@ const renderMessageContent = (text: string) => {
 // Chat history stored per user/group id
 const chatHistory: Record<number, Message[]> = {};
 
-export default function Chat({ selectedUser, selectedGroup, chatType = 'user', onUserPreviewUpdate }: ChatProps) {
+export default function Chat({ selectedUser, selectedGroup, chatType = 'user', onUserPreviewUpdate, onOpenGroupInfo }: ChatProps) {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState("");
@@ -133,7 +134,6 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user', o
 
   // Determine current chat ID and name
   const currentChatId = chatType === 'group' ? selectedGroup?.id : selectedUser?.id;
-  const currentChatName = chatType === 'group' ? selectedGroup?.name : selectedUser?.name;
   const isGroupChat = chatType === 'group';
 
   // Load messages when user or group is selected
@@ -434,7 +434,11 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user', o
                 style={{ backgroundColor: '#52c41a' }}
                 icon={<UsergroupAddOutlined />}
               />
-              <div style={{ flex: 1 }}>
+              <button
+                type="button"
+                className="group-info-trigger"
+                onClick={() => onOpenGroupInfo?.(selectedGroup)}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>{selectedGroup.name}</span>
                   <Tag color="green">{selectedGroup.members.length} members</Tag>
@@ -444,7 +448,7 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user', o
                     {selectedGroup.description}
                   </div>
                 )}
-              </div>
+              </button>
             </>
           ) : selectedUser ? (
             <span>{selectedUser.name}</span>

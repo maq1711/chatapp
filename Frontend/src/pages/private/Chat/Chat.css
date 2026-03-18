@@ -23,6 +23,24 @@
   z-index: 1;
 }
 
+.group-info-trigger {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-info-trigger:hover {
+  opacity: 0.85;
+}
+
 /* Mobile adjustments */
 @media (max-width: 768px) {
   .chat-header {

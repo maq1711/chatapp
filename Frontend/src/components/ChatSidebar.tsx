@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { List, Avatar, Input, Tabs, Badge } from "antd";
-import { MessageOutlined, UsergroupAddOutlined, LogoutOutlined, UserOutlined, UpOutlined } from "@ant-design/icons";
+import { MessageOutlined, UsergroupAddOutlined, LogoutOutlined, UserOutlined, UpOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import GroupManagement from "./GroupManagement";
-import { createGroupChat, onGroupCreated, type GroupMember } from "../services/signalRService";
 import "./ChatSidebar.css";
 
 interface User {
@@ -28,6 +27,9 @@ interface Group {
 }
 
 interface ChatSidebarProps {
+  groups: Group[];
+  onCreateGroup: (group: { name: string; description?: string; members: User[] }) => void;
+  onOpenGroupInfo: (group: Group) => void;
   onSelectUser: (user: User) => void;
   onSelectGroup?: (group: Group) => void;
   selectedUserId?: number;
@@ -36,62 +38,11 @@ interface ChatSidebarProps {
   onRequestMobileClose?: () => void;
 }
 
-export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserId, selectedGroupId, onlineUsers, onRequestMobileClose }: ChatSidebarProps) {
+export default function ChatSidebar({ groups, onCreateGroup, onOpenGroupInfo, onSelectUser, onSelectGroup, selectedUserId, selectedGroupId, onlineUsers, onRequestMobileClose }: ChatSidebarProps) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("chats");
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [groups, setGroups] = useState<Group[]>([
-    // {
-    //   id: 101,
-    //   name: "Project Team",
-    //   lastMessage: "Let's meet tomorrow",
-    //   time: "11:45",
-    //   members: [],
-    //   createdAt: new Date(),
-    // },
-  ]);
-
-  useEffect(() => {
-    const unsubGroupCreated = onGroupCreated((groupId, groupName, description, members, adminId) => {
-      const parsedId = Number(groupId);
-      const mappedMembers: User[] = members.map((member) => ({
-        id: member.id,
-        name: member.name,
-        connectionId: member.connectionId,
-        lastMessage: "",
-        time: "",
-        isAdmin: member.isAdmin ?? member.id === adminId,
-      }));
-
-      const incomingGroup: Group = {
-        id: Number.isFinite(parsedId) ? parsedId : Date.now(),
-        name: groupName,
-        description: description || undefined,
-        lastMessage: "Group created",
-        time: "Now",
-        members: mappedMembers,
-        adminId,
-        createdAt: new Date(),
-      };
-
-      setGroups((prev) => {
-        const exists = prev.some((g) => String(g.id) === String(incomingGroup.id));
-        if (exists) {
-          return prev.map((g) =>
-            String(g.id) === String(incomingGroup.id)
-              ? { ...g, ...incomingGroup }
-              : g
-          );
-        }
-        return [incomingGroup, ...prev];
-      });
-    });
-
-    return () => {
-      unsubGroupCreated();
-    };
-  }, []);
 
   const truncatePreview = (text: string, maxWords = 8, maxChars = 60) => {
     const normalized = text.replace(/\s+/g, " ").trim();
@@ -132,41 +83,7 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
     : groups;
 
   const handleCreateGroup = (groupData: { name: string; description?: string; members: User[] }) => {
-    const creatorId = Number(currentUser?.id);
-    const creatorName = currentUser?.fullName || "You";
-
-    const creatorMember: User = {
-      id: creatorId,
-      name: creatorName,
-      connectionId: "self",
-      lastMessage: "",
-      time: "",
-      isAdmin: true,
-    };
-
-    const nonCreatorMembers = groupData.members
-      .filter((member) => member.id !== creatorId)
-      .map((member) => ({ ...member, isAdmin: member.isAdmin ?? false }));
-
-    const newGroup: Group = {
-      ...groupData,
-      id: Date.now(),
-      lastMessage: "Group created",
-      time: "Now",
-      members: [creatorMember, ...nonCreatorMembers],
-      adminId: Number.isFinite(creatorId) ? creatorId : undefined,
-      createdAt: new Date(),
-    };
-
-    void createGroupChat(
-      String(newGroup.id),
-      newGroup.name,
-      newGroup.description,
-      newGroup.members.map((member) => member.id),
-      creatorId
-    );
-
-    setGroups(prev => [newGroup, ...prev]);
+    onCreateGroup(groupData);
     setActiveTab("groups");
   };
 
@@ -181,6 +98,7 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
     // }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("chat-user-previews");
     navigate("/");
   };
 
@@ -286,16 +204,29 @@ export default function ChatSidebar({ onSelectUser, onSelectGroup, selectedUserI
                           icon={<UsergroupAddOutlined />}
                         />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="list-item-title">
-                            {group.name}
-                            <Badge 
-                              count={group.members.length} 
-                              style={{ 
-                                backgroundColor: 'var(--color-gray-text)', 
-                                marginLeft: '8px',
-                                fontSize: '10px'
-                              }} 
-                            />
+                          <div className="group-list-heading">
+                            <div className="list-item-title">
+                              {group.name}
+                              <Badge 
+                                count={group.members.length} 
+                                style={{ 
+                                  backgroundColor: 'var(--color-gray-text)', 
+                                  marginLeft: '8px',
+                                  fontSize: '10px'
+                                }} 
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              className="group-info-btn"
+                              aria-label={`View ${group.name} info`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onOpenGroupInfo(group);
+                              }}
+                            >
+                              <InfoCircleOutlined />
+                            </button>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                             <span className="list-item-description" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

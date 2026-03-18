@@ -100,6 +100,32 @@
   margin-bottom: 4px;
 }
 
+.group-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.group-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-primary);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.group-info-btn:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
 .list-item-description {
   color: var(--color-gray-text);
   font-size: 12px;

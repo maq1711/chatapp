@@ -2,11 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { Layout, Button } from "antd";
 import { MenuOutlined, CloseOutlined } from "@ant-design/icons";
 import ChatSidebar from "../components/ChatSidebar";
+import GroupInfoModal from "../components/GroupInfoModal";
 import Chat from "../pages/private/Chat/Chat";
 import {
   startConnection,
   stopConnection,
   onUserList,
+  onGroupCreated,
+  createGroupChat,
+  leaveGroupChat,
   type ConnectedUser,
 } from "../services/signalRService";
 import "./chat.css";
@@ -39,6 +43,8 @@ interface Group {
 export default function ChatLayout() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [groupInfoTarget, setGroupInfoTarget] = useState<Group | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
   const hasAutoSelectedInitialChat = useRef(false);
@@ -65,6 +71,48 @@ export default function ChatLayout() {
     hasAutoSelectedInitialChat.current = true;
   }, [onlineUsers, selectedUser, selectedGroup]);
 
+  useEffect(() => {
+    const unsubGroupCreated = onGroupCreated((groupId, groupName, description, members, adminId) => {
+      const parsedId = Number(groupId);
+      const mappedMembers: User[] = members.map((member) => ({
+        id: member.id,
+        name: member.name,
+        connectionId: member.connectionId,
+        lastMessage: "",
+        time: "",
+        isAdmin: member.isAdmin ?? member.id === adminId,
+      }));
+
+      const incomingGroup: Group = {
+        id: Number.isFinite(parsedId) ? parsedId : Date.now(),
+        name: groupName,
+        description: description || undefined,
+        lastMessage: "Group created",
+        time: "Now",
+        members: mappedMembers,
+        adminId,
+        createdAt: new Date(),
+      };
+
+      setGroups((prev) => {
+        const exists = prev.some((group) => String(group.id) === String(incomingGroup.id));
+        if (exists) {
+          return prev.map((group) =>
+            String(group.id) === String(incomingGroup.id)
+              ? { ...group, ...incomingGroup }
+              : group
+          );
+        }
+
+        return [incomingGroup, ...prev];
+      });
+    });
+
+    return () => {
+      unsubGroupCreated();
+    };
+  }, []);
+
   const handleUserPreviewUpdate = (userId: number, lastMessage: string, time: string) => {
     setChatPreviews((prev) => {
       const next = {
@@ -80,6 +128,63 @@ export default function ChatLayout() {
         user.id === userId ? { ...user, lastMessage, time } : user
       )
     );
+  };
+
+  const handleCreateGroup = (groupData: { name: string; description?: string; members: User[] }) => {
+    const storedUser = localStorage.getItem("user");
+    const currentUser = storedUser ? JSON.parse(storedUser) : null;
+    const creatorId = Number(currentUser?.id);
+    const creatorName = currentUser?.fullName || "You";
+
+    const creatorMember: User = {
+      id: creatorId,
+      name: creatorName,
+      connectionId: "self",
+      lastMessage: "",
+      time: "",
+      isAdmin: true,
+    };
+
+    const nonCreatorMembers = groupData.members
+      .filter((member) => member.id !== creatorId)
+      .map((member) => ({ ...member, isAdmin: member.isAdmin ?? false }));
+
+    const newGroup: Group = {
+      ...groupData,
+      id: Date.now(),
+      lastMessage: "Group created",
+      time: "Now",
+      members: [creatorMember, ...nonCreatorMembers],
+      adminId: Number.isFinite(creatorId) ? creatorId : undefined,
+      createdAt: new Date(),
+    };
+
+    void createGroupChat(
+      String(newGroup.id),
+      newGroup.name,
+      newGroup.description,
+      newGroup.members.map((member) => member.id),
+      creatorId
+    );
+
+    setGroups((prev) => [newGroup, ...prev]);
+    setSelectedGroup(newGroup);
+    setSelectedUser(null);
+  };
+
+  const handleOpenGroupInfo = (group: Group) => {
+    setGroupInfoTarget(group);
+  };
+
+  const handleCloseGroupInfo = () => {
+    setGroupInfoTarget(null);
+  };
+
+  const handleLeaveGroup = (groupId: number) => {
+    void leaveGroupChat(String(groupId));
+    setGroups((prev) => prev.filter((group) => group.id !== groupId));
+    setGroupInfoTarget((prev) => (prev?.id === groupId ? null : prev));
+    setSelectedGroup((prev) => (prev?.id === groupId ? null : prev));
   };
 
   // Connect to SignalR when chat page loads
@@ -186,6 +291,9 @@ export default function ChatLayout() {
         collapsedWidth="0"
       >
         <ChatSidebar 
+          groups={groups}
+          onCreateGroup={handleCreateGroup}
+          onOpenGroupInfo={handleOpenGroupInfo}
           onSelectUser={handleSelectUser} 
           onSelectGroup={handleSelectGroup}
           selectedUserId={selectedUser?.id} 
@@ -207,8 +315,17 @@ export default function ChatLayout() {
           selectedGroup={selectedGroup}
           chatType={selectedGroup ? 'group' : selectedUser ? 'user' : 'user'}
           onUserPreviewUpdate={handleUserPreviewUpdate}
+          onOpenGroupInfo={handleOpenGroupInfo}
         />
       </Content>
+
+      <GroupInfoModal
+        group={groupInfoTarget}
+        open={Boolean(groupInfoTarget)}
+        currentUserId={JSON.parse(localStorage.getItem("user") || "null")?.id}
+        onClose={handleCloseGroupInfo}
+        onLeaveGroup={handleLeaveGroup}
+      />
     </Layout>
   );
 }
