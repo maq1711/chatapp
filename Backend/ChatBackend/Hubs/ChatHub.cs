@@ -75,7 +75,7 @@ public class ChatHub : Hub
         if (disconnectedUser != null)
         {
             await Clients.All.SendAsync("RemoveUser", disconnectedUser.Id);
-            Console.WriteLine($"User disconnected: {disconnectedUser.Name} (ID: {disconnectedUser.Id})");
+            // Console.WriteLine($"User disconnected: {disconnectedUser.Name} (ID: {disconnectedUser.Id})");
         }
 
         // Send updated user list

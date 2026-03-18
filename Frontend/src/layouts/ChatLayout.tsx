@@ -23,6 +23,7 @@ interface User {
   lastMessage: string;
   time: string;
   isOnline?: boolean;
+  isAdmin?: boolean;
 }
 
 interface ChatPreview {
@@ -37,6 +38,7 @@ interface Group {
   lastMessage: string;
   time: string;
   members: User[];
+  adminId?: number;
   createdAt: Date;
 }
 
