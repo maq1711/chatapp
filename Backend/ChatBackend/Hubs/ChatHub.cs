@@ -130,7 +130,24 @@ public class ChatHub : Hub
         if (string.IsNullOrWhiteSpace(groupId))
             return;
 
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupId);
+        var connectionId = Context.ConnectionId;
+        if (!ConnectedUsers.TryGetValue(connectionId, out var leavingUser))
+            return;
+
+        var leaveMessageId = Guid.NewGuid().ToString();
+        var sentTime = DateTime.Now.ToString("hh:mm tt").ToLowerInvariant();
+
+        await Clients.OthersInGroup(groupId).SendAsync(
+            "ReceiveGroupMessage",
+            "System",
+            $"{leavingUser.Name} left the group",
+            connectionId,
+            leaveMessageId,
+            groupId,
+            sentTime
+        );
+
+        await Groups.RemoveFromGroupAsync(connectionId, groupId);
     }
 
     // Create a chat group and notify all selected members
