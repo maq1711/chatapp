@@ -44,7 +44,7 @@ export default function Register() {
   return (
     <div className="auth-page" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="login-container">
-      <h1 className="auth-title">ChatApp</h1>
+      <h1 className="auth-title">Chat App</h1>
       <h3>Register</h3>
 
       {error && <p style={{ color: "red", fontSize: "14px", marginBottom: "10px" }}>{error}</p>}
@@ -85,7 +85,7 @@ export default function Register() {
           onChange={(e) => setBio(e.target.value)}
           style={{ display: "block", marginBottom: "10px", width: "100%" }}
         />
-
+        
         <button type="submit" disabled={isLoading} style={{ width: "100%", height: "2.5em" }}>
           {isLoading ? "Registering..." : "Register"}
         </button>

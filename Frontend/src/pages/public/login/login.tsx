@@ -36,7 +36,7 @@ export default function Login() {
   return (
     <div className="auth-page" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="login-container">
-      <h1 className="auth-title">ChatApp</h1>
+      <h1 className="auth-title">Chat App</h1>
       <h3>Login</h3>
 
       {error && <p style={{ color: "red", fontSize: "14px", marginBottom: "10px" }}>{error}</p>}
