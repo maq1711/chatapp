@@ -56,22 +56,18 @@ body {
     background: var(--color-bacground-primary) !important;
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
-    /* scrollbar width */
     height: 8px;
-    /* horizontal scrollbar height */
 }
 
 ::-webkit-scrollbar-track {
     background: var(--color-bacground-primary);
-    /* track (background) */
+
 }
 
 ::-webkit-scrollbar-thumb {
     background: var(--color-primary);
-    /* draggable part */
     border-radius: 4px;
 }
 

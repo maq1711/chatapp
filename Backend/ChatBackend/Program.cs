@@ -41,7 +41,7 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
     };
 
-    // Allow SignalR to receive token from query string
+    // SignalR to receive token from query string
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -57,7 +57,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Add CORS for frontend communication
+// Adding CORS - front communication
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -71,14 +71,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Auto-create database on startup
+// creating database on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
 }
 
-// Configure the HTTP request pipeline.
+// Configuring the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

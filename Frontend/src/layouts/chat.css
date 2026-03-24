@@ -59,7 +59,6 @@
   color: #fff !important;
 }
 
-/* Force hamburger and close icons to black in light mode */
 :root .hamburger-menu svg,
 [data-theme="light"] .hamburger-menu svg {
   color: #000 !important;
@@ -74,7 +73,6 @@
   stroke: #333 !important;
 }
 
-/* Force hamburger and close icons to white in dark mode */
 [data-theme="dark"] .hamburger-menu svg {
   color: #fff !important;
   fill: #fff !important;
@@ -87,7 +85,6 @@
   stroke: #e0e0e0 !important;
 }
 
-/* Sidebar overlay for mobile */
 .sidebar-overlay {
   position: fixed;
   top: 0;
@@ -99,7 +96,6 @@
   display: none;
 }
 
-/* Desktop View (769px and above) */
 @media (min-width: 769px) {
   .chat-sider {
     display: block !important;
@@ -108,7 +104,6 @@
   }
 }
 
-/* Tablet and Mobile View (768px and below) */
 @media (max-width: 768px) {
   .hamburger-menu {
     display: flex;
@@ -137,13 +132,11 @@
     margin-left: 0 !important;
   }
 
-  /* Adjust theme toggle button on mobile */
   .theme-toggle-wrapper {
     right: 12px;
   }
 }
 
-/* Small Mobile (480px and below) */
 @media (max-width: 480px) {
   .chat-sider {
     width: 280px !important;

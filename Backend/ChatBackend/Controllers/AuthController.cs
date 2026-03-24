@@ -24,22 +24,19 @@ public class AuthController : ControllerBase
         _configuration = configuration;
     }
 
-    // POST: api/auth/register
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        // Check if email already exists
         var existingUser = await _context.Users.AnyAsync(u => u.Email == dto.Email);
         if (existingUser)
             return Conflict(new { message = "Email is already registered" });
 
-        // Hash password
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
-        // Create user
+        // new user
         var user = new User
         {
             FullName = dto.FullName,
@@ -68,28 +65,23 @@ public class AuthController : ControllerBase
         });
     }
 
-    // POST: api/auth/login
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        // Find user by email
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
         if (user == null)
             return Unauthorized(new { message = "Invalid email or password" });
 
-        // Verify password
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             return Unauthorized(new { message = "Invalid email or password" });
 
-        // Update last login
         user.LastLogin = DateTime.UtcNow;
         user.IsOnline = true;
         await _context.SaveChangesAsync();
 
-        // Generate JWT token
         var token = GenerateJwtToken(user);
 
         return Ok(new AuthResponseDto

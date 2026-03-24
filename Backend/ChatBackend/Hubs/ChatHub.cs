@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace ChatBackend.Hubs;
 
-// Model for connected users
 public class ConnectedUser
 {
     public int Id { get; set; }
