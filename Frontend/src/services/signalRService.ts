@@ -44,18 +44,15 @@ export const startConnection = async (userId: string, userName: string) => {
     try { await connection.stop() } catch {}
   }
 
-  // If another call to startConnection happened while we were stopping, bail out
   if (myAttempt !== attemptId) return
   connection = new signalR.HubConnectionBuilder()
     .withUrl(`http://localhost:5000/hubs/chat?userId=${encodeURIComponent(userId)}&name=${encodeURIComponent(userName)}`, {
       skipNegotiation: false,
-      transport: signalR.HttpTransportType.WebSockets,
     })
     .withAutomaticReconnect([0, 0, 1000, 3000, 5000, 10000])
     .withHubProtocol(new signalR.JsonHubProtocol())
     .build()
 
-  // Register on the new connection BEFORE .start()
   connection.on("UserList", (users: ConnectedUser[]) => {
     callbacks.userList.forEach(cb => cb(users))
   })

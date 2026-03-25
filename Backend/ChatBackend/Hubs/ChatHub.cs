@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using System.Collections.Concurrent;
 
 namespace ChatBackend.Hubs;
 
@@ -20,7 +21,7 @@ public class GroupMemberInfo
 public class ChatHub : Hub
 {
     // Static dictionary: connectionId -> user info
-    private static readonly Dictionary<string, ConnectedUser> ConnectedUsers = new();
+    private static readonly ConcurrentDictionary<string, ConnectedUser> ConnectedUsers = new();
 
     // When a user connects: read name & userId from query string, store in dictionary, broadcast user list
     public override async Task OnConnectedAsync()
@@ -28,10 +29,17 @@ public class ChatHub : Hub
         var name = Context.GetHttpContext()?.Request.Query["name"].ToString() ?? "";
         var userId = Context.GetHttpContext()?.Request.Query["userId"].ToString() ?? "0";
         var connectionId = Context.ConnectionId;
+        var parsedUserId = int.TryParse(userId, out var id) ? id : 0;
+
+        if (parsedUserId <= 0 || string.IsNullOrWhiteSpace(name))
+        {
+            Context.Abort();
+            return;
+        }
 
         var user = new ConnectedUser
         {
-            Id = int.TryParse(userId, out var id) ? id : 0,
+            Id = parsedUserId,
             Name = name,
             ConnectionId = connectionId
         };
@@ -43,7 +51,7 @@ public class ChatHub : Hub
             .ToList();
         foreach (var key in staleKeys)
         {
-            ConnectedUsers.Remove(key);
+            ConnectedUsers.TryRemove(key, out _);
         }
 
         ConnectedUsers[connectionId] = user;
@@ -64,10 +72,10 @@ public class ChatHub : Hub
         var connectionId = Context.ConnectionId;
         ConnectedUser? disconnectedUser = null;
 
-        if (ConnectedUsers.ContainsKey(connectionId))
+        if (ConnectedUsers.TryGetValue(connectionId, out var existingUser))
         {
-            disconnectedUser = ConnectedUsers[connectionId];
-            ConnectedUsers.Remove(connectionId);
+            disconnectedUser = existingUser;
+            ConnectedUsers.TryRemove(connectionId, out _);
         }
 
         // Notify all clients to remove this user from their list
@@ -88,10 +96,8 @@ public class ChatHub : Hub
     {
         var senderConnectionId = Context.ConnectionId;
 
-        if (!ConnectedUsers.ContainsKey(senderConnectionId))
+        if (!ConnectedUsers.TryGetValue(senderConnectionId, out var sender))
             return;
-
-        var sender = ConnectedUsers[senderConnectionId];
 
         // Check if receiver is still online
         if (ConnectedUsers.ContainsKey(receiverConnectionId))
@@ -227,13 +233,11 @@ public class ChatHub : Hub
     {
         var connectionId = Context.ConnectionId;
 
-        if (!ConnectedUsers.ContainsKey(connectionId))
+        if (!ConnectedUsers.TryGetValue(connectionId, out var sender))
             return;
 
         if (string.IsNullOrWhiteSpace(groupId))
             return;
-
-        var sender = ConnectedUsers[connectionId];
 
         // Send only to users in this specific group, excluding sender
         await Clients.OthersInGroup(groupId).SendAsync("ReceiveGroupMessage", sender.Name, message, connectionId, messageId, groupId, sentTime);

@@ -189,18 +189,20 @@ export default function ChatLayout() {
     setSelectedGroup((prev) => (prev?.id === groupId ? null : prev));
   };
 
-  // Connect to SignalR when chat page loads
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (!storedUser) return;
     const user = JSON.parse(storedUser);
+    const currentUserId = Number(user.id);
+    if (!Number.isFinite(currentUserId) || currentUserId <= 0) {
+      return;
+    }
 
     // Register UserList callback BEFORE starting connection
     // so we catch the initial broadcast from OnConnectedAsync
     const unsubUserList = onUserList((users: ConnectedUser[]) => {
-      const me = user.id;
       const others: User[] = users
-        .filter((u) => u.id !== me)
+        .filter((u) => u.id !== currentUserId)
         .map((u) => ({
           ...u,
           isOnline: true,
@@ -230,7 +232,7 @@ export default function ChatLayout() {
     });
 
     // Now start the connection — listeners are already in place
-    startConnection(String(user.id), user.fullName);
+    startConnection(String(currentUserId), user.fullName);
 
     return () => {
       unsubUserList();
