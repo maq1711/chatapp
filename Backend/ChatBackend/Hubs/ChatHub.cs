@@ -184,13 +184,18 @@ public class ChatHub : Hub
 
         var connectionIds = members.Select(m => m.ConnectionId).Distinct().ToList();
 
+        Console.WriteLine($"[CreateGroup] GroupId={groupId}, Name={groupName}, RequestedMembers={string.Join(",", memberIds ?? Array.Empty<int>())}, FoundMembers={string.Join(",", members.Select(m => m.Name))}, Total={members.Count}");
+        Console.WriteLine($"[CreateGroup] Total ConnectedUsers={ConnectedUsers.Count}");
+
         // Ensure all selected members are in this SignalR group channel
         foreach (var connectionId in connectionIds)
         {
             await Groups.AddToGroupAsync(connectionId, groupId);
         }
 
-        await Clients.Clients(connectionIds).SendAsync(
+        // Broadcast to ALL clients (not just connected members) so group appears everywhere
+        Console.WriteLine($"[CreateGroup] Broadcasting GroupCreated to all clients");
+        await Clients.All.SendAsync(
             "GroupCreated",
             groupId,
             groupName,
@@ -228,7 +233,7 @@ public class ChatHub : Hub
         await Clients.Client(receiverConnectionId).SendAsync("PrivateMessageEdited", messageId, updatedText);
     }
 
-    // Send group message to all others
+    // Send group message to all members in the group (including sender for confirmation)
     public async Task SendGroupMessage(string groupId, string message, string messageId, string sentTime)
     {
         var connectionId = Context.ConnectionId;
@@ -239,8 +244,8 @@ public class ChatHub : Hub
         if (string.IsNullOrWhiteSpace(groupId))
             return;
 
-        // Send only to users in this specific group, excluding sender
-        await Clients.OthersInGroup(groupId).SendAsync("ReceiveGroupMessage", sender.Name, message, connectionId, messageId, groupId, sentTime);
+        // Send to all users in this group including sender for proper sync
+        await Clients.Group(groupId).SendAsync("ReceiveGroupMessage", sender.Name, message, connectionId, messageId, groupId, sentTime);
     }
 
     // Mark a group message as edited for everyone except sender

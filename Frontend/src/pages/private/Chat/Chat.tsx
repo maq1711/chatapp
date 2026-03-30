@@ -148,14 +148,17 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user', o
     const nextGroupId = isGroupChat && selectedGroup ? String(selectedGroup.id) : null;
     const prevGroupId = activeGroupIdRef.current;
 
-    if (prevGroupId && prevGroupId !== nextGroupId) {
-      void leaveGroupChat(prevGroupId);
-    }
+    const updateGroupMembership = async () => {
+      if (prevGroupId && prevGroupId !== nextGroupId) {
+        await leaveGroupChat(prevGroupId);
+      }
 
-    if (nextGroupId && prevGroupId !== nextGroupId) {
-      void joinGroupChat(nextGroupId);
-    }
+      if (nextGroupId && prevGroupId !== nextGroupId) {
+        await joinGroupChat(nextGroupId);
+      }
+    };
 
+    void updateGroupMembership();
     activeGroupIdRef.current = nextGroupId;
 
     return () => {
@@ -246,17 +249,18 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user', o
     });
 
     const unsubGroup = onReceiveGroupMessage((senderName, text, senderConnectionId, messageId, groupId, sentTime) => {
-      if (senderName === myName) return;
       const groupChatId = Number(groupId);
+      const existing = chatHistory[groupChatId] || [];
+      // Skip if message already added (avoid duplicates)
+      if (existing.some(m => m.sharedId === messageId)) return;
       const incoming: Message = {
         id: Date.now(),
         sharedId: messageId,
         text,
-        sender: "other",
+        sender: senderName === myName ? "me" : "other",
         time: sentTime || getCurrentTime(),
-        senderName,
+        senderName: senderName === myName ? undefined : senderName,
       };
-      const existing = chatHistory[groupChatId] || [];
       const updated = [...existing, incoming];
       chatHistory[groupChatId] = updated;
       if (isGroupChat && currentChatId === groupChatId) {
@@ -425,7 +429,6 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user', o
   return (
     <div className="chat-container">
 
-      {/* Chat header */}
       <div className="chat-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
           {isGroupChat && selectedGroup ? (
@@ -458,8 +461,6 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user', o
         </div>
       </div>
 
-
-      {/* Messages */}
       <div className="chat-messages">
 
         {!selectedUser && !selectedGroup ? (
@@ -507,7 +508,6 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user', o
                   </div>
                 ) : (
                   <>
-                    {/* Show sender name in group chats for other people's messages */}
                     {isGroupChat && msg.sender === "other" && msg.senderName && (
                       <div style={{ 
                         fontSize: '11px', 
@@ -563,7 +563,6 @@ export default function Chat({ selectedUser, selectedGroup, chatType = 'user', o
 
       </div>
 
-      {/* Message input */}
       <div className="chat-input-container">
         <TextArea
           value={message}

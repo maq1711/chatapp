@@ -33,9 +33,9 @@ public class GroupController : ControllerBase
             return BadRequest("Group name is required");
         }
 
-        if (groupData.Members == null || groupData.Members.Count < 3)
+        if (groupData.Members == null || groupData.Members.Count < 2)
         {
-            return BadRequest("At least 3 members are required to create a group");
+            return BadRequest("At least 2 members are required to create a group");
         }
 
         _logger.LogInformation($"Creating group: {groupData.Name}");

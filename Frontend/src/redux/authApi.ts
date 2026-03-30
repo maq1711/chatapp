@@ -1,6 +1,5 @@
 import { baseApi } from "./baseApi";
 
-// --- Types matching backend DTOs ---
 export interface User {
   id: number;
   fullName: string;
@@ -42,13 +41,10 @@ export interface UpdateUserRequest {
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
-    // GET profile (protected)
     getMe: build.query<User, void>({
       query: () => ({ url: "auth/profile" }),
       providesTags: ["Auth", "User"],
     }),
-
-    // POST login
     login: build.mutation<AuthResponse, LoginRequest>({
       query: (body) => ({
         url: "auth/login",
@@ -57,8 +53,6 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Auth", "User"],
     }),
-
-    // POST register
     register: build.mutation<AuthResponse, RegisterRequest>({
       query: (body) => ({
         url: "auth/register",
@@ -67,8 +61,6 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Auth", "User"],
     }),
-
-    // POST logout (protected)
     logout: build.mutation<void, void>({
       query: () => ({
         url: "auth/logout",
@@ -76,8 +68,6 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Auth", "User"],
     }),
-
-    // PUT update profile (protected)
     updateUser: build.mutation<User, UpdateUserRequest>({
       query: (body) => ({
         url: "auth/profile",
@@ -89,7 +79,6 @@ export const authApi = baseApi.injectEndpoints({
   }),
 });
 
-// --- Exported hooks ---
 export const {
   useGetMeQuery,
   useLazyGetMeQuery,

@@ -16,7 +16,6 @@
   text-shadow: 0 0 0 #000;
 }
 
-/* Light mode - moon icon black */
 :root .moon-icon,
 [data-theme="light"] .moon-icon {
   color: #000 !important;
@@ -50,7 +49,6 @@
   transform: translateY(0);
 }
 
-/* Small Mobile Devices (320px - 480px) */
 @media (max-width: 480px) {
   .theme-toggle-wrapper {
     top: 6px;
@@ -76,7 +74,6 @@
   }
 }
 
-/* Medium Mobile Devices (481px - 640px) */
 @media (min-width: 481px) and (max-width: 640px) {
   .theme-toggle-wrapper {
     top: 8px;
@@ -101,7 +98,6 @@
   }
 }
 
-/* Tablets (641px - 1024px) */
 @media (min-width: 641px) and (max-width: 1024px) {
   .theme-toggle-wrapper {
     /* top: 10px; */
@@ -126,7 +122,6 @@
   }
 }
 
-/* Desktop and above (1025px+) */
 @media (min-width: 1025px) {
   .theme-toggle-wrapper {
     top: 8px;

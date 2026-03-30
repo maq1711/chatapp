@@ -245,7 +245,6 @@ export default function ChatSidebar({ groups, onCreateGroup, onOpenGroupInfo, on
         ]}
       />
 
-      {/* User Info Panel at Bottom */}
       <div className="sidebar-user-panel">
         {showUserMenu && (
           <div className="user-menu-dropdown">

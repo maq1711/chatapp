@@ -198,8 +198,6 @@ export default function ChatLayout() {
       return;
     }
 
-    // Register UserList callback BEFORE starting connection
-    // so we catch the initial broadcast from OnConnectedAsync
     const unsubUserList = onUserList((users: ConnectedUser[]) => {
       const others: User[] = users
         .filter((u) => u.id !== currentUserId)
@@ -214,7 +212,6 @@ export default function ChatLayout() {
         }));
       setOnlineUsers(others);
 
-      // Keep selectedUser's connectionId in sync with latest UserList
       setSelectedUser(prev => {
         if (!prev) return prev;
         const updated = others.find(u => u.id === prev.id);
@@ -231,7 +228,6 @@ export default function ChatLayout() {
       });
     });
 
-    // Now start the connection — listeners are already in place
     startConnection(String(currentUserId), user.fullName);
 
     return () => {
@@ -243,7 +239,6 @@ export default function ChatLayout() {
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
     setSelectedGroup(null); // Clear group selection
-    // Close sidebar on mobile after selecting a user
     if (window.innerWidth <= 768) {
       setSidebarVisible(false);
     }
@@ -252,7 +247,6 @@ export default function ChatLayout() {
   const handleSelectGroup = (group: Group) => {
     setSelectedGroup(group);
     setSelectedUser(null); // Clear user selection
-    // Close sidebar on mobile after selecting a group
     if (window.innerWidth <= 768) {
       setSidebarVisible(false);
     }
@@ -275,7 +269,6 @@ export default function ChatLayout() {
         size="large"
       />
 
-      {/* Overlay for mobile */}
       {sidebarVisible && (
         <div 
           className="sidebar-overlay" 
